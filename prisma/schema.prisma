@@ -1,0 +1,492 @@
+// Datamodell för generisk BRF-sida (multi-tenant).
+//
+// Databas: Supabase Postgres (delad mellan flera föreningar).
+//   url       -> transaction pooler (port 6543, ?pgbouncer=true) för runtime
+//   directUrl -> session pooler (port 5432) för prisma migrate/db push
+//
+// MULTI-TENANT: varje förening är en Association (tenant). Alla tenant-tabeller
+// har associationId. Vilken förening en deploy gäller styrs av ASSOCIATION_SLUG
+// (env). Isoleringen sköts av en auto-scopad Prisma-klient (src/lib/tenant.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums (värden matchar string-unionerna i src/lib/types.ts exakt)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  admin
+  member
+}
+
+enum MemberStatus {
+  pending
+  approved
+  rejected
+}
+
+enum DocumentCategory {
+  stadgar
+  arsredovisning
+  protokoll
+  ordningsregler
+  ovrigt
+}
+
+enum DocumentVisibility {
+  public
+  member
+}
+
+enum MaintenanceStatus {
+  ny
+  pagar
+  atgardad
+}
+
+enum ListingStatus {
+  draft
+  published
+}
+
+// ---------------------------------------------------------------------------
+// Tenant
+// ---------------------------------------------------------------------------
+
+/// En förening (tenant). slug matchar ASSOCIATION_SLUG i deployens env.
+///
+/// Raden bär också föreningens identitet – namn, adress och kontaktuppgifter –
+/// som visas i header, footer och på kontaktsidorna. Styrelsen redigerar dem
+/// under Admin → Föreningsinfo → Namn och kontakt. Tom sträng = visas inte.
+/// Logotyp och färger hör till själva deployen och ligger kvar i koden.
+model Association {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  /// Kortnamn för header, meny och sidtitlar. Tomt = samma som name.
+  shortName            String @default("")
+  organizationNumber   String @default("")
+  street               String @default("")
+  postalCode           String @default("")
+  city                 String @default("")
+  /// Styrelsens publika kontaktuppgifter.
+  contactEmail         String @default("")
+  contactPhone         String @default("")
+  /// Förvaltaren. Allt tomt döljer förvaltarrutorna.
+  propertyManagerName  String @default("")
+  propertyManagerPhone String @default("")
+  propertyManagerEmail String @default("")
+
+  members               Member[]
+  news                  NewsPost[]
+  board                 BoardMember[]
+  boardGroups           BoardGroup[]
+  documents             Document[]
+  maintenance           MaintenanceRequest[]
+  maintenanceEvents     MaintenanceEvent[]
+  maintenanceCategories MaintenanceCategory[]
+  maintenanceSettings   MaintenanceSettings?
+  apartments            Apartment[]
+  buildings             Building[]
+  photos                ApartmentPhoto[]
+  siteContent           SiteContent?
+  info                  AssociationInfo?
+  economy               EconomyFigures?
+}
+
+// ---------------------------------------------------------------------------
+// Tenant-tabeller (alla har associationId)
+// ---------------------------------------------------------------------------
+
+/// Boende eller styrelseledamot. Kopplas till Supabase Auth-användare via e-post.
+model Member {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  email     String
+  fullName  String
+  apartment String       @default("")
+  role      Role         @default(member)
+  status    MemberStatus @default(pending)
+  createdAt DateTime     @default(now())
+
+  /// Behörighet att lägga upp/hantera en säljannons för sin lägenhet.
+  canManageListing Boolean @default(false)
+
+  ownedApartment Apartment?
+
+  /// Felanmälningar medlemmen gjort inloggad.
+  maintenanceRequests MaintenanceRequest[]
+
+  @@unique([associationId, email])
+  @@index([associationId])
+  @@index([status])
+}
+
+/// Nyhet / aktuellt-inlägg.
+model NewsPost {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  slug        String
+  title       String
+  excerpt     String
+  body        String
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([associationId, slug])
+  @@index([associationId, published, publishedAt])
+}
+
+/// En grupp på styrelsesidan, t.ex. "Styrelsen", "Valberedning",
+/// "Trädgårdsgruppen". Var tidigare en enum; föreningen skapar egna grupper.
+model BoardGroup {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  members BoardMember[]
+
+  @@unique([associationId, name])
+  @@index([associationId, sortOrder])
+}
+
+/// Person i en grupp på styrelsesidan.
+model BoardMember {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Restrict, inte Cascade: att ta bort en grupp får aldrig tyst radera
+  /// personerna i den. Datalagret vägrar och ber admin flytta dem först.
+  groupId String
+  group   BoardGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  role      String
+  name      String
+  email     String @default("")
+  sortOrder Int    @default(0)
+
+  @@index([associationId, groupId, sortOrder])
+}
+
+/// Dokument (PDF m.m.).
+model Document {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  title      String
+  category   DocumentCategory
+  visibility DocumentVisibility @default(public)
+
+  /// Härleds ur den uppladdade filen – aldrig inmatat för hand.
+  fileName    String
+  /// Sökväg i den privata bucketen "documents": <associationId>/<kategori>/<uuid>.<ext>
+  /// Tom sträng = ingen fil uppladdad (demorader från seed).
+  storagePath String @default("")
+  mimeType    String @default("")
+  sizeBytes   Int    @default(0)
+
+  uploadedAt DateTime @default(now())
+
+  @@index([associationId, visibility])
+}
+
+/// Kategori för felanmälan, t.ex. "VVS / vatten". Var tidigare en enum;
+/// styrelsen lägger till egna (garage, sopsortering, laddstolpar …).
+model MaintenanceCategory {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  /// Underleverantör som normalt hanterar den här typen av fel. Tomma fält
+  /// döljer motsvarande rad i adminvyn; inget av detta visas publikt.
+  contractorName  String @default("")
+  contractorPhone String @default("")
+  contractorEmail String @default("")
+  contractorInfo  String @default("")
+
+  requests MaintenanceRequest[]
+
+  @@unique([associationId, name])
+  @@index([associationId, sortOrder])
+}
+
+/// Redigerbara texter och kontaktuppgifter på felanmälningssidan.
+/// En rad per förening. Tomt telefonnummer = rutan visas inte alls.
+model MaintenanceSettings {
+  id            String      @id @default(uuid())
+  associationId String      @unique
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Förklaring högst upp: vad som är föreningens ansvar och vad som är den
+  /// boendes eget.
+  introText String
+
+  /// Jour vid akuta fel. Tom telefon döljer rutan.
+  emergencyPhone String @default("")
+  emergencyText  String @default("")
+
+  /// Fastighetsskötare – en tjänst utanför styrelsen som normalt kostar pengar.
+  /// Tom telefon döljer rutan.
+  caretakerName  String @default("")
+  caretakerPhone String @default("")
+  caretakerText  String @default("")
+}
+
+/// En händelse i ett ärendes historik: en notering, en statusändring eller
+/// båda. Raderna skrivs bara till – en sparad notering ändras aldrig i
+/// efterhand, så loggen går att lita på.
+model MaintenanceEvent {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  requestId String
+  request   MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  /// Fritext. Tom när händelsen bara är en statusändring.
+  body       String             @default("")
+  /// Satta när status ändrades i samma sparning.
+  statusFrom MaintenanceStatus?
+  statusTo   MaintenanceStatus?
+  /// Namnet på den i styrelsen som skrev. Sparas som text så att raden
+  /// överlever att medlemmen tas bort.
+  author     String             @default("")
+
+  createdAt DateTime @default(now())
+
+  @@index([associationId, requestId, createdAt])
+}
+
+/// Felanmälan från boende/besökare.
+model MaintenanceRequest {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Restrict: en kategori med ärenden i får inte raderas, då skulle ärendena
+  /// tappa sin kategori utan att någon bett om det.
+  categoryId String
+  category   MaintenanceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  /// Valfritt – anmälaren behöver inte uppge namn.
+  name        String            @default("")
+  /// Minst en av email/phone krävs; validering sker i server action.
+  email       String            @default("")
+  phone       String            @default("")
+  location    String
+  description String
+  status      MaintenanceStatus @default(ny)
+  createdAt   DateTime          @default(now())
+
+  /// Vem som ska utföra jobbet. Nuvarande läge, inte historik.
+  assignedTo String @default("")
+
+  /// Medlemmen som anmälde, om hen var inloggad. Sätts från sessionen, aldrig
+  /// från formuläret. Styr märket på Mina sidor och vem som aviseras när
+  /// status ändras. SetNull: ärendet finns kvar för styrelsen om medlemmen
+  /// tas bort.
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  /// När medlemmen senast såg sina ärenden. En statusändring efter det är en
+  /// ny uppdatering för medlemmen.
+  memberSeenAt DateTime?
+
+  events MaintenanceEvent[]
+
+  @@index([associationId, status])
+  @@index([associationId, memberId])
+}
+
+/// Redigerbart sidinnehåll (startsida + Om föreningen). En rad per förening.
+model SiteContent {
+  id            String      @id @default(uuid())
+  associationId String      @unique
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  heroTitle    String
+  heroSubtitle String
+  welcomeBody  String
+  aboutBody    String
+}
+
+/// Föreningsfakta (Om föreningen + mäklarsida). En rad per förening.
+model AssociationInfo {
+  id            String      @id @default(uuid())
+  associationId String      @unique
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  builtYear          Int
+  apartments         Int
+  associationType    String
+  landOwnership      String
+  heating            String
+  broadband          String
+  parking            String
+  laundry            String
+  commonAreas        String
+  feesInfo           String
+  economySummary     String
+  renovationsDone    String[]
+  renovationsPlanned String[]
+  pets               String
+  energyClass        String
+}
+
+/// Underlaget för nyckeltalen på /ekonomi. En rad per förening.
+///
+/// Bara underlaget sparas – nyckeltalen räknas fram vid visning
+/// (src/lib/key-figures.ts), så att ett publicerat tal aldrig kan glida isär
+/// från siffrorna det bygger på. null = inte ifyllt. 0 är ett giltigt värde:
+/// en skuldfri förening har 0 kr i räntebärande skulder.
+model EconomyFigures {
+  id            String      @id @default(uuid())
+  associationId String      @unique
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Vilket år siffrorna gäller, t.ex. "2025" eller "2024/2025".
+  fiscalYear String @default("")
+
+  /// Totala årsavgifter per år, kr.
+  annualFees          Float?
+  /// Yta upplåten med bostadsrätt, m².
+  condoArea           Float?
+  /// Räntebärande skulder på balansdagen, kr.
+  interestBearingDebt Float?
+  /// Totalyta – bostadsrätt + hyresrätt (lokaler, garage …), m².
+  totalArea           Float?
+  /// Årets resultat, kr. Kan vara negativt.
+  netResult           Float?
+  /// Årets avskrivningar, kr.
+  depreciation        Float?
+  /// Kostnadsfört planerat underhåll, kr.
+  plannedMaintenance  Float?
+  /// Utrangeringar, kr. Valfritt.
+  disposals           Float?
+  /// Väsentliga engångsposter: kostnader positiva, intäkter negativa. Valfritt.
+  nonRecurring        Float?
+
+  /// Lägenheterna som bostadsrättsytan räknades fram ur: [{ label, sqm }].
+  /// Tom lista = ytan skrevs in direkt.
+  apartmentAreas Json @default("[]")
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Ett hus / trapphus i föreningen. Namnet är fritt: "Hus 43", "Trapphus B"
+/// eller en adress fungerar lika bra.
+model Building {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  name      String
+  address   String   @default("")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  /// Förslag vid massinläggning: första FÖRENINGSNUMRET för husets lägenheter
+  /// (Lantmäteriets nummer räknas fram ur våningsplanet och behöver inget
+  /// startvärde). numberTopDown = översta våningen får de lägsta numren.
+  numberStart   String  @default("1")
+  numberTopDown Boolean @default(false)
+
+  apartments Apartment[]
+
+  @@unique([associationId, name])
+  @@index([associationId, sortOrder])
+}
+
+/// En lägenhet – nav mellan boende, planritning och säljannons.
+model Apartment {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Föreningens eget lägenhetsnummer, t.ex. "23". Unikt per förening och det
+  /// som kopplar en boende till sin lägenhet.
+  number         String
+  /// Lantmäteriets nummer, t.ex. "1101": två siffror för våningsplan (entré =
+  /// 10, nedåt 09, 08 …) och två för lägenheten på planet. Visas som "23/1101".
+  standardNumber String  @default("")
+  ownerMemberId  String? @unique
+  owner          Member? @relation(fields: [ownerMemberId], references: [id], onDelete: SetNull)
+
+  /// Valfri: en lägenhet kan sakna hus (t.ex. en som skapats automatiskt när en
+  /// boende loggat in). Den hamnar då under "Ej placerade" i registret.
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+
+  // Fakta
+  floor       String @default("")
+  rooms       String @default("")
+  sizeSqm     String @default("")
+  description String @default("")
+
+  // Planritning (privat fil i floor-plans-bucketen)
+  floorPlanPath String?
+
+  // Säljannons
+  forSale               Boolean       @default(false)
+  listingStatus         ListingStatus @default(draft)
+  price                 String        @default("")
+  monthlyFee            String        @default("")
+  viewingInfo           String        @default("")
+  saleDescription       String        @default("")
+  brokerName            String        @default("")
+  brokerPhone           String        @default("")
+  brokerEmail           String        @default("")
+  hemnetUrl             String        @default("")
+  showFloorPlanPublicly Boolean       @default(false)
+  publishedAt           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  photos ApartmentPhoto[]
+
+  @@unique([associationId, number])
+  @@index([associationId, buildingId, number])
+  @@index([associationId, forSale, listingStatus])
+}
+
+/// Annonsfoto (publik fil i apartment-photos-bucketen).
+model ApartmentPhoto {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  path        String
+  caption     String    @default("")
+  sortOrder   Int       @default(0)
+
+  @@index([apartmentId, sortOrder])
+}

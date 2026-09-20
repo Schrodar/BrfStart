@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/*
+ * =============================================================================
+ * TEMA – ändra färger här när du forkar sidan för en ny förening.
+ * =============================================================================
+ * Byt värdena på --color-brand-* för att ge sidan föreningens profilfärg.
+ * Resten (neutraler, typografi) är avstämt för att passa de flesta BRF-sajter.
+ */
+
+@theme {
+  /* Profilfärg (grön som standard). Byt hela skalan för egen färg. */
+  --color-brand-50: #eef7f1;
+  --color-brand-100: #d6ecdd;
+  --color-brand-200: #b0d9c0;
+  --color-brand-300: #82c09d;
+  --color-brand-400: #52a279;
+  --color-brand-500: #2f855a;
+  --color-brand-600: #276749;
+  --color-brand-700: #22543d;
+  --color-brand-800: #1c4532;
+  --color-brand-900: #16382a;
+
+  /* Sidans grund. */
+  --color-background: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-foreground: #1a1c1a;
+  --color-muted: #5c6360;
+  --color-border: #e4e6e2;
+
+  /* Varm skandinavisk palett – används av sidomenyn (NavDrawer). */
+  --color-moss: #315c4a; /* djup mossgrön huvudfärg */
+  --color-ink: #292b27; /* mörk textfärg */
+  --color-bone: #f4f0e8; /* varm benvit bakgrund */
+  --color-sand: #e5ddd0; /* ljus sandfärg för hover/aktiv */
+  --color-line: #d8d0c4; /* diskreta kantlinjer */
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  --radius-card: 0.875rem;
+}
+
+/* Typsnitt via next/font (variabler sätts på <html> i layout.tsx). */
+.font-display {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+}
+.font-body {
+  font-family: var(--font-manrope), var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Reservera scrollbar-gutter permanent så att scroll-lås (öppen sidomeny)
+     aldrig ändrar innehållsbredden → ingen layout-shift/"snap" i menyanimeringen. */
+  scrollbar-gutter: stable;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fokus-ring som följer profilfärgen – tillgänglighet. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Enkel prose-styling för längre brödtext (nyheter, sidinnehåll). */
+.prose {
+  line-height: 1.7;
+}
+.prose > * + * {
+  margin-top: 1rem;
+}
+.prose h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-top: 2rem;
+}
+.prose h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+}
+.prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prose a {
+  color: var(--color-brand-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Hero: mjuk fade-in (uppåt) av texten över videobakgrunden. */
+@keyframes heroFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.hero-fade {
+  animation: heroFadeUp 1s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-fade {
+    animation: none;
+  }
+}
+
+/* Undermeny (SubNav): när ett avsnitt med undersidor öppnas glider flikarna
+   in en i taget (fördröjningen sätts per flik), och markeringen tonar fram.
+   Markeringen animerar bara opacitet – dess transform styr positionen. */
+@keyframes subnavPillIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes subnavFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.subnav-pill {
+  animation: subnavPillIn 280ms ease-out both;
+}
+.subnav-fade {
+  animation: subnavFadeIn 280ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .subnav-pill,
+  .subnav-fade {
+    animation: none;
+  }
+}
