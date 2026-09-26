@@ -16,3 +16,4 @@ export * from "./economy";
 export * from "./maintenance";
 export * from "./members";
 export * from "./news";
+export * from "./support";

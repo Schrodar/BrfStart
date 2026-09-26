@@ -11,9 +11,15 @@
  */
 
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { CurrentUser } from "@/lib/types";
 import { getMemberByEmail } from "@/lib/data";
+import {
+  getActiveSupportSession,
+  SUPPORT_COOKIE,
+  type ActiveSupportSession,
+} from "@/lib/data/support";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** Inloggad användare (Supabase-session + Member-profil). Null om utloggad. */
@@ -47,12 +53,46 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
-/** Kräver admin-roll (styrelsen). */
+/**
+ * Plattformsadmins pågående supportsession, om någon. Cachad per request, men
+ * kontrollerad mot databasen varje gång – ett avslut slår därför igenom direkt,
+ * även i en flik som redan står öppen.
+ */
+export const getSupportSession = cache(
+  async (): Promise<ActiveSupportSession | null> => {
+    const value = (await cookies()).get(SUPPORT_COOKIE)?.value;
+    return value ? getActiveSupportSession(value) : null;
+  },
+);
+
+/**
+ * Den inloggade under ett supportläge. Här finns INGEN Member-rad bakom, så
+ * id:t är inget medlems-id: ingen admin-action får använda user.id som främmande
+ * nyckel mot Member. I dag används bara fullName, som författare i
+ * felanmälningarnas historik – vilket ger rätt spårbarhet.
+ */
+function supportUser(session: ActiveSupportSession): CurrentUser {
+  return {
+    id: `support:${session.id}`,
+    email: session.adminEmail,
+    fullName: `${session.adminName} (support)`,
+    apartment: "",
+    role: "admin",
+    status: "approved",
+    canManageListing: false,
+  };
+}
+
+/** Kräver admin-roll (styrelsen) eller ett pågående supportläge. */
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
+  if (user?.role === "admin") return user;
+
+  const support = await getSupportSession();
+  if (support) return supportUser(support);
+
   if (!user) redirect("/logga-in?next=/admin");
-  if (user.role !== "admin") redirect("/medlem");
-  return user;
+  redirect("/medlem");
 }
 
 /**

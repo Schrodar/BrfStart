@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Refreshar Supabase-sessionen på varje request och skriver tillbaka uppdaterade
- * auth-cookies. Anropas från src/middleware.ts. Utan detta kan tokens hinna gå
+ * auth-cookies. Anropas från src/proxy.ts. Utan detta kan tokens hinna gå
  * ut mellan requests.
  */
 export async function updateSession(request: NextRequest) {

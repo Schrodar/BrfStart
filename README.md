@@ -148,7 +148,7 @@ src/
     ui/                  Återanvändbart UI-kit (Button, Card, Field, …)
     layout/              Sidhuvud, sidfot, delnavigation
   config/siteConfig.ts   Logotyp, sajtadress     config/site.ts  Navigation
-  middleware.ts          Refreshar Supabase-sessionen på varje request
+  proxy.ts               Refreshar Supabase-sessionen på varje request
   lib/
     prisma.ts            Prisma-klient (singleton)
     supabase/            Supabase-klienter (server, client, admin, middleware)

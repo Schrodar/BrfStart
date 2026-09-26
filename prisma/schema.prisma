@@ -102,6 +102,96 @@ model Association {
   siteContent           SiteContent?
   info                  AssociationInfo?
   economy               EconomyFigures?
+  platformAccount       PlatformAccount?
+  supportSessions       SupportSession[]
+}
+
+// ---------------------------------------------------------------------------
+// Plattform – ägarens panel över alla föreningar
+// ---------------------------------------------------------------------------
+//
+// Modellerna nedan tillhör plattformspanelen (eget privat repo). Föreningssajten
+// rör bara SupportSession, och då enbart för att släppa in en supportsession i
+// adminpanelen. De ligger ändå i den här filen, eftersom `prisma db push` utgår
+// härifrån och skulle radera tabeller som saknas.
+
+/// Ägaren av plattformen – inte en förenings styrelse.
+model PlatformAdmin {
+  id String @id @default(uuid())
+  /// Supabase Auth-användarens id. Kopplingen är id:t och inte e-posten, som kan bytas.
+  userId     String    @unique
+  email      String
+  name       String    @default("")
+  createdAt  DateTime  @default(now())
+  disabledAt DateTime?
+
+  supportSessions SupportSession[]
+  auditEvents     AuditEvent[]
+}
+
+/// Kunduppgifter per förening. Läses bara av panelen.
+model PlatformAccount {
+  id            String      @id @default(uuid())
+  associationId String      @unique
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// demo | aktiv | pausad | avslutad
+  status       String    @default("demo")
+  startedAt    DateTime?
+  billingEmail String    @default("")
+  contactName  String    @default("")
+  notes        String    @default("")
+  updatedAt    DateTime  @updatedAt
+}
+
+/// Tidsbegränsad åtkomst till EN förenings adminpanel. Skapas i panelen och
+/// löses in av /admin/support i den här appen.
+///
+/// Hemligheterna lagras bara som sha256 och är två skilda slumptal: tokenHash
+/// hör till engångslänken, cookieHash till sessionens cookie. Cookiens hemlighet
+/// skapas först vid inlösen, så en databasdump ger ingen åtkomst.
+model SupportSession {
+  id              String        @id @default(uuid())
+  associationId   String
+  association     Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  platformAdminId String
+  platformAdmin   PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+
+  /// Denormaliserat, så att föreningssajten aldrig behöver läsa PlatformAdmin.
+  adminName  String
+  adminEmail String
+  /// Varför sessionen öppnades – styrelsens kvitto och den dokumenterade instruktionen.
+  reason     String
+
+  tokenHash  String  @unique
+  /// Null tills länken lösts in. Null krockar inte i ett unikt index.
+  cookieHash String? @unique
+
+  /// Länken är engångs och kortlivad; själva sessionen lever längre.
+  linkExpiresAt DateTime
+  usedAt        DateTime?
+  startedAt     DateTime  @default(now())
+  expiresAt     DateTime
+  endedAt       DateTime?
+
+  @@index([associationId, expiresAt])
+}
+
+/// Loggbok över plattformsadmins åtgärder. associationId är avsiktligt ingen
+/// främmande nyckel: loggen ska överleva att en förening tas bort.
+model AuditEvent {
+  id              String         @id @default(uuid())
+  at              DateTime       @default(now())
+  platformAdminId String?
+  platformAdmin   PlatformAdmin? @relation(fields: [platformAdminId], references: [id], onDelete: SetNull)
+  actorEmail      String
+  associationId   String?
+  action          String
+  target          String         @default("")
+  summary         String         @default("")
+
+  @@index([associationId, at])
+  @@index([at])
 }
 
 // ---------------------------------------------------------------------------

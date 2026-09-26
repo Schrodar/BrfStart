@@ -41,6 +41,9 @@ const ASSOCIATION_SCOPED_MODELS = new Set([
   "SiteContent",
   "AssociationInfo",
   "EconomyFigures",
+  // Supportsessioner hör till plattformspanelen, men scopas med flit: en token
+  // som skapats för en förening kan då aldrig lösas in hos en annan.
+  "SupportSession",
 ]);
 
 /**
