@@ -9,7 +9,10 @@
 // (env). Isoleringen sköts av en auto-scopad Prisma-klient (src/lib/tenant.ts).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // native för den egna datorn, rhel-openssl-3.0.x för Netlifys servrar.
+  // Bygget sker på en annan maskin än där sajten sedan kör.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
