@@ -97,6 +97,7 @@ export async function saveEconomyFiguresAction(
   await saveEconomyFigures({ fiscalYear, ...values, apartmentAreas });
 
   revalidatePath("/ekonomi");
+  revalidatePath("/om-foreningen");
   revalidatePath("/admin/foreningsinfo/ekonomi");
 
   return {

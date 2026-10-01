@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { FigureOk } from "@/lib/key-figures";
 import { Card, CardBody } from "@/components/ui";
 
@@ -47,5 +48,43 @@ export function KeyFiguresCard({
         </p>
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * Kort version för sidokolumnen på /om-foreningen: bara talen, utan
+ * förklaringar, och en länk till /ekonomi där de står i sin helhet.
+ */
+export function KeyFiguresSummary({
+  figures,
+  fiscalYear,
+}: {
+  figures: FigureOk[];
+  fiscalYear: string;
+}) {
+  if (figures.length === 0) return null;
+
+  return (
+    <div className="rounded-card border border-border bg-surface p-5">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        Nyckeltal{fiscalYear ? ` ${fiscalYear}` : ""}
+      </h2>
+      <dl className="mt-4 space-y-3">
+        {figures.map(({ figure, number, unit }) => (
+          <div key={figure.id}>
+            <dt className="text-xs text-muted">{figure.title}</dt>
+            <dd className="text-sm font-medium text-foreground tabular-nums">
+              {number} {unit}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <Link
+        href="/ekonomi"
+        className="mt-4 inline-block text-sm font-medium text-brand-700 hover:underline"
+      >
+        Mer om föreningens ekonomi →
+      </Link>
+    </div>
   );
 }

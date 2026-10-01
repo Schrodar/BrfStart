@@ -4,8 +4,11 @@ import { navGroups } from "@/config/site";
 import {
   getAssociationInfo,
   getAssociationProfile,
+  getEconomyFigures,
   getSiteContent,
 } from "@/lib/data";
+import { publishedFigures } from "@/lib/key-figures";
+import { KeyFiguresSummary } from "@/components/key-figures";
 import { Container, PageHeader, Section } from "@/components/ui";
 import { Prose } from "@/components/prose";
 
@@ -25,11 +28,13 @@ const READ_MORE = ["/fastigheten", "/styrelse", "/stadgar", "/ekonomi"].flatMap(
 );
 
 export default async function AboutPage() {
-  const [content, info, association] = await Promise.all([
+  const [content, info, association, economy] = await Promise.all([
     getSiteContent(),
     getAssociationInfo(),
     getAssociationProfile(),
+    getEconomyFigures(),
   ]);
+  const figures = publishedFigures(economy);
 
   const facts: { label: string; value: string }[] = [
     { label: "Byggår", value: info.builtYear ? String(info.builtYear) : "" },
@@ -44,6 +49,7 @@ export default async function AboutPage() {
     // Tom sträng och 0 betyder "inte ifyllt" – hellre ingen ruta än en ruta
     // med nollor och tomma rader, precis som på Fastigheten och För mäklare.
   ].filter((fact) => fact.value);
+  const hasAside = facts.length > 0 || figures.length > 0;
 
   return (
     <Section>
@@ -56,7 +62,7 @@ export default async function AboutPage() {
         />
 
         <div className="mt-8 grid gap-10 lg:grid-cols-3">
-          <div className={facts.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}>
+          <div className={hasAside ? "lg:col-span-2" : "lg:col-span-3"}>
             {content.aboutBody ? (
               <Prose content={content.aboutBody} />
             ) : (
@@ -66,29 +72,32 @@ export default async function AboutPage() {
             )}
           </div>
 
-          {facts.length > 0 ? (
-            <aside className="lg:col-span-1">
-              <div className="rounded-card border border-border bg-surface p-5">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-                  Snabbfakta
-                </h2>
-                <dl className="mt-4 space-y-3">
-                  {facts.map((fact) => (
-                    <div key={fact.label}>
-                      <dt className="text-xs text-muted">{fact.label}</dt>
-                      <dd className="text-sm font-medium text-foreground">
-                        {fact.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                <Link
-                  href="/fastigheten"
-                  className="mt-4 inline-block text-sm font-medium text-brand-700 hover:underline"
-                >
-                  Fler fakta om fastigheten →
-                </Link>
-              </div>
+          {hasAside ? (
+            <aside className="space-y-6 lg:col-span-1">
+              {facts.length > 0 ? (
+                <div className="rounded-card border border-border bg-surface p-5">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                    Snabbfakta
+                  </h2>
+                  <dl className="mt-4 space-y-3">
+                    {facts.map((fact) => (
+                      <div key={fact.label}>
+                        <dt className="text-xs text-muted">{fact.label}</dt>
+                        <dd className="text-sm font-medium text-foreground">
+                          {fact.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <Link
+                    href="/fastigheten"
+                    className="mt-4 inline-block text-sm font-medium text-brand-700 hover:underline"
+                  >
+                    Fler fakta om fastigheten →
+                  </Link>
+                </div>
+              ) : null}
+              <KeyFiguresSummary figures={figures} fiscalYear={economy.fiscalYear} />
             </aside>
           ) : null}
         </div>
