@@ -12,10 +12,18 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  /*
+   * Bara där servern läser sessionen. De publika sidorna är statiska och
+   * cachade – där förnyar webbläsarklienten sin egen session, och ingen
+   * funktion behöver väckas. /felanmalan för inskicket (server action:en
+   * kopplar ärendet till kontot).
+   */
   matcher: [
-    /*
-     * Kör på alla sidor utom statiska filer och bilder.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/admin/:path*",
+    "/medlem/:path*",
+    "/logga-in",
+    "/felanmalan",
+    "/api/me",
+    "/dokument/:id/ladda-ner",
   ],
 };

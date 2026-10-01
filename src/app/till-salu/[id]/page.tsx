@@ -11,6 +11,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+// Inga annonser byggs i förväg. Var och en renderas vid första besöket och
+// cachas sedan; admin och Sälja bygger om dem när en annons ändras.
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const listing = await getListingById(id);

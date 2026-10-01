@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicDocuments } from "@/lib/data";
-import { getCurrentUser } from "@/lib/auth";
 import { Container, PageHeader, Section } from "@/components/ui";
 import { GroupedDocumentList } from "@/components/document-list";
+import { GuestOnly } from "@/components/guest-only";
 
 export const metadata: Metadata = {
   title: "Dokument",
 };
 
 export default async function DocumentsPage() {
-  // getCurrentUser() är request-cachad, så det här är inget extra anrop utöver
-  // det layouten redan gör.
-  const [documents, user] = await Promise.all([
-    getPublicDocuments(),
-    getCurrentUser(),
-  ]);
+  const documents = await getPublicDocuments();
 
   return (
     <Section>
@@ -29,8 +24,9 @@ export default async function DocumentsPage() {
           <GroupedDocumentList documents={documents} />
         </div>
 
-        {/* Uppmaningen att logga in säger inget till den som redan är det. */}
-        {user ? null : (
+        {/* Uppmaningen att logga in säger inget till den som redan är det.
+            Sidan är statisk, så det avgörs i webbläsaren. */}
+        <GuestOnly>
           <p className="mt-6 text-sm text-muted">
             Är du boende? Fler dokument finns när du är{" "}
             <Link href="/logga-in" className="text-brand-700 hover:underline">
@@ -38,7 +34,7 @@ export default async function DocumentsPage() {
             </Link>
             .
           </p>
-        )}
+        </GuestOnly>
       </Container>
     </Section>
   );

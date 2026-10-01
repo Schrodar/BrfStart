@@ -5,7 +5,6 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { TransitionProvider } from "@/components/page-transition/TransitionProvider";
 import { PageTransition } from "@/components/page-transition/PageTransition";
-import { getCurrentUser } from "@/lib/auth";
 import { getAssociationProfile, getSiteContent } from "@/lib/data";
 import { shortNameOf } from "@/lib/utils";
 import "./globals.css";
@@ -23,6 +22,15 @@ const manrope = Manrope({
   variable: "--font-manrope",
   display: "swap",
 });
+
+/**
+ * De publika sidorna renderas en gång och serveras sedan ur cachen. Layouten
+ * läser därför inte inloggningen – headern gör det i webbläsaren (se
+ * useCurrentMember). När styrelsen ändrar något byggs berörda sidor om via
+ * revalidatePath i admin-actions; revalidate här är ett säkerhetsnät som
+ * förnyar en sida i bakgrunden inom tio minuter om en ändring skulle missas.
+ */
+export const revalidate = 600;
 
 /** Titel och beskrivning byggs av föreningens uppgifter i databasen. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,8 +52,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, siteContent, association] = await Promise.all([
-    getCurrentUser(),
+  const [siteContent, association] = await Promise.all([
     getSiteContent(),
     getAssociationProfile(),
   ]);
@@ -60,7 +67,6 @@ export default async function RootLayout({
         */}
         <TransitionProvider>
           <SiteHeader
-            user={user}
             association={association}
             heroTitle={siteContent.heroTitle}
             heroSubtitle={siteContent.heroSubtitle}

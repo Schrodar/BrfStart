@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { PhoneLink } from "@/components/association";
-import { getCurrentUser } from "@/lib/auth";
 import {
   getMaintenanceCategories,
   getMaintenanceSettings,
@@ -15,21 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function MaintenancePage() {
-  const [settings, categories, user] = await Promise.all([
+  // Sidan är statisk. Den inloggade läses i formuläret, i webbläsaren.
+  const [settings, categories] = await Promise.all([
     getMaintenanceSettings(),
     getMaintenanceCategories(),
-    getCurrentUser(),
   ]);
-
-  // Inloggad medlem: kontaktuppgifterna fylls i, och ärendet går att följa
-  // på Mina sidor – när kontot är godkänt (annars når hen inte sidorna än).
-  const member = user
-    ? {
-        fullName: user.fullName,
-        email: user.email,
-        canTrack: user.role === "admin" || user.status === "approved",
-      }
-    : null;
 
   return (
     <Section>
@@ -97,7 +86,7 @@ export default async function MaintenancePage() {
               </CardBody>
             </Card>
           ) : (
-            <MaintenanceForm categories={categories} member={member} />
+            <MaintenanceForm categories={categories} />
           )}
         </div>
       </Container>

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { submitMaintenance, type MaintenanceState } from "./actions";
 import { HONEYPOT_FIELD } from "@/lib/form";
+import { useCurrentMember } from "@/lib/use-current-member";
 import {
   Button,
   Field,
@@ -26,16 +27,35 @@ function SubmitButton() {
 
 export function MaintenanceForm({
   categories,
-  member,
 }: {
   categories: { id: string; name: string }[];
-  /** Inloggad anmälare. canTrack = kontot är godkänt och når Mina sidor. */
-  member: { fullName: string; email: string; canTrack: boolean } | null;
 }) {
   const [state, action] = useActionState<MaintenanceState, FormData>(
     submitMaintenance,
     {},
   );
+
+  // Inloggad anmälare, läst i webbläsaren (sidan är statisk). canTrack =
+  // kontot är godkänt och når Mina sidor. Ärendet kopplas till kontot i
+  // server action:en oavsett vad som visas här.
+  const { member: me } = useCurrentMember();
+  const member = me
+    ? {
+        fullName: me.fullName,
+        email: me.email,
+        canTrack: me.role === "admin" || me.status === "approved",
+      }
+    : null;
+
+  // Uppgifterna kommer först efter att sidan visats: fyll bara i tomma fält,
+  // så att det besökaren redan skrivit aldrig skrivs över.
+  const emailRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!me) return;
+    if (emailRef.current && !emailRef.current.value) emailRef.current.value = me.email;
+    if (nameRef.current && !nameRef.current.value) nameRef.current.value = me.fullName;
+  }, [me]);
 
   if (state.success) {
     return (
@@ -95,23 +115,18 @@ export function MaintenanceForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="E-post" htmlFor="email" hint="E-post eller telefon krävs.">
           <Input
+            ref={emailRef}
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            defaultValue={member?.email}
           />
         </Field>
         <Field label="Telefon" htmlFor="phone" hint="E-post eller telefon krävs.">
           <Input id="phone" name="phone" autoComplete="tel" />
         </Field>
         <Field label="Namn" htmlFor="name" hint="Valfritt.">
-          <Input
-            id="name"
-            name="name"
-            autoComplete="name"
-            defaultValue={member?.fullName}
-          />
+          <Input ref={nameRef} id="name" name="name" autoComplete="name" />
         </Field>
       </div>
 

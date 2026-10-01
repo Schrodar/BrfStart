@@ -8,23 +8,24 @@ import { NavDrawer } from "@/components/layout/nav-drawer";
 import { AuthButton } from "@/components/layout/auth-button";
 import { AssociationLogo } from "@/components/association";
 import { siteConfig } from "@/config/siteConfig";
-import type { AssociationProfile, CurrentUser } from "@/lib/types";
+import type { AssociationProfile } from "@/lib/types";
+import { useCurrentMember } from "@/lib/use-current-member";
 import { cn, shortNameOf } from "@/lib/utils";
 
 interface SiteHeaderProps {
-  user: CurrentUser | null;
   association: AssociationProfile;
   heroTitle: string;
   heroSubtitle: string;
 }
 
 export function SiteHeader({
-  user,
   association,
   heroTitle,
   heroSubtitle,
 }: SiteHeaderProps) {
   const pathname = usePathname();
+  // Sidorna är statiska, så inloggningen läses här i webbläsaren.
+  const { signedIn, member } = useCurrentMember();
   const isHome = pathname === "/";
   const shortName = shortNameOf(association);
 
@@ -40,9 +41,9 @@ export function SiteHeader({
           </TransitionLink>
 
           <div className="flex items-center gap-2">
-            <AuthButton user={user} variant="default" />
+            <AuthButton signedIn={signedIn} variant="default" />
             {/* NavDrawer visar en platshållare här. Själva knappen portaleras till body. */}
-            <NavDrawer user={user} association={association} variant="default" />
+            <NavDrawer member={member} association={association} variant="default" />
           </div>
         </div>
       </header>
@@ -82,9 +83,9 @@ export function SiteHeader({
           </TransitionLink>
 
           <div className="flex items-center gap-2">
-            <AuthButton user={user} variant="hero" />
+            <AuthButton signedIn={signedIn} variant="hero" />
             {/* NavDrawer visar en platshållare här. Själva knappen portaleras till body. */}
-            <NavDrawer user={user} association={association} variant="hero" />
+            <NavDrawer member={member} association={association} variant="hero" />
           </div>
         </div>
       </div>

@@ -130,9 +130,3 @@ export async function registerAction(
       : "Tack! Din registrering har tagits emot och väntar på godkännande av styrelsen. Du får ett mejl när kontot aktiverats.",
   };
 }
-
-export async function logoutAction(): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
-  redirect("/");
-}

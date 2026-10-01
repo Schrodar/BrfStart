@@ -14,7 +14,8 @@ import { TransitionLink } from "@/components/page-transition/TransitionLink";
 import { navGroups } from "@/config/site";
 import { siteConfig } from "@/config/siteConfig";
 import { AddressDetails, AssociationLogo } from "@/components/association";
-import type { AssociationProfile, CurrentUser } from "@/lib/types";
+import type { AssociationProfile } from "@/lib/types";
+import type { SessionMember } from "@/lib/use-current-member";
 import { cn, shortNameOf } from "@/lib/utils";
 
 const PANEL_ID = "nav-drawer-panel";
@@ -36,11 +37,12 @@ function activeGroupIds(pathname: string) {
 }
 
 export function NavDrawer({
-  user,
+  member,
   association,
   variant = "default",
 }: {
-  user: CurrentUser | null;
+  /** Den inloggade medlemmen, när /api/me har svarat (se useCurrentMember). */
+  member: SessionMember | null;
   association: AssociationProfile;
   variant?: NavDrawerVariant;
 }) {
@@ -150,10 +152,10 @@ export function NavDrawer({
   const homeActive = matchActive("/", pathname);
   // Logga in/ut ligger i headern (AuthButton). Kvar i lådan: genvägen till
   // medlemssidorna för den som redan är inloggad.
-  const memberLink = user
+  const memberLink = member
     ? {
-        href: user.role === "admin" ? "/admin" : "/medlem",
-        label: user.role === "admin" ? "Admin" : "Mina sidor",
+        href: member.role === "admin" ? "/admin" : "/medlem",
+        label: member.role === "admin" ? "Admin" : "Mina sidor",
       }
     : null;
 

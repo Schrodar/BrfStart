@@ -10,6 +10,12 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// Inga artiklar byggs i förväg. Var och en renderas vid första besöket och
+// cachas sedan; admin bygger om dem när en nyhet ändras.
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPublishedNewsBySlug(slug);

@@ -2,9 +2,10 @@
 
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { TransitionLink } from "@/components/page-transition/TransitionLink";
-import { logoutAction } from "@/lib/actions/auth";
-import type { CurrentUser } from "@/lib/types";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -67,13 +68,28 @@ function Icon({ direction }: { direction: "in" | "out" }) {
 }
 
 export function AuthButton({
-  user,
+  signedIn,
   variant = "default",
 }: {
-  user: CurrentUser | null;
+  /** null = sessionen är inte kontrollerad än (se useCurrentMember). */
+  signedIn: boolean | null;
   variant?: AuthButtonVariant;
 }) {
-  if (!user) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
+  // Håll platsen tills sessionen är känd – det tar bara millisekunder, och
+  // en inloggad ska inte se "Logga in" blinka till.
+  if (signedIn === null) {
+    return (
+      <span aria-hidden="true" className={cn(buttonClass(variant), "invisible")}>
+        <Icon direction="in" />
+        <span className="sr-only sm:not-sr-only">Logga in</span>
+      </span>
+    );
+  }
+
+  if (!signedIn) {
     return (
       <TransitionLink href="/logga-in" className={buttonClass(variant)}>
         <Icon direction="in" />
@@ -82,12 +98,23 @@ export function AuthButton({
     );
   }
 
+  // Utloggningen sker i webbläsaren, så att headern märker den direkt även när
+  // man redan står på startsidan (en server action hade inte gett något sidbyte).
   return (
-    <form action={logoutAction}>
-      <button type="submit" className={buttonClass(variant)}>
-        <Icon direction="out" />
-        <span className="sr-only sm:not-sr-only">Logga ut</span>
-      </button>
-    </form>
+    <button
+      type="button"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        await createSupabaseBrowserClient().auth.signOut();
+        router.push("/");
+        router.refresh();
+        setPending(false);
+      }}
+      className={buttonClass(variant)}
+    >
+      <Icon direction="out" />
+      <span className="sr-only sm:not-sr-only">Logga ut</span>
+    </button>
   );
 }
