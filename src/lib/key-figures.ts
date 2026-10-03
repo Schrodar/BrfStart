@@ -525,3 +525,19 @@ export function publishedFigures(values: Values): FigureOk[] {
     (r): r is FigureOk => r.status === "ok",
   );
 }
+
+// ---------------------------------------------------------------------------
+// Påminnelse om gamla nyckeltal
+// ---------------------------------------------------------------------------
+
+/**
+ * Nyckeltalen räknas som gamla när ekonomiformuläret inte har sparats på ett
+ * år – då har det oftast kommit en ny årsredovisning. Samma gräns används i
+ * plattformspanelen (JohanIt, src/lib/platform/content-status.ts).
+ */
+export const STALE_AFTER_DAYS = 365;
+
+export function isStale(updatedAt: string | null, now: Date = new Date()): boolean {
+  if (!updatedAt) return false;
+  return now.getTime() - new Date(updatedAt).getTime() > STALE_AFTER_DAYS * 86_400_000;
+}

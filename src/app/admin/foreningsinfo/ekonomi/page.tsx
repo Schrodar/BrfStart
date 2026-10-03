@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getEconomyFigures } from "@/lib/data";
 import { formatDateTime } from "@/lib/utils";
+import { StaleFiguresNotice } from "@/components/key-figures";
 import { PageHeader } from "@/components/ui";
 import { KeyFiguresForm } from "./key-figures-form";
 
@@ -22,6 +23,7 @@ export default async function AdminEconomyPage() {
           </>
         }
       />
+      <StaleFiguresNotice figures={figures} />
       <KeyFiguresForm
         initial={figures}
         savedAtLabel={figures.updatedAt ? formatDateTime(figures.updatedAt) : null}

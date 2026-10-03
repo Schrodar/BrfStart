@@ -1,5 +1,7 @@
 import Link from "next/link";
-import type { FigureOk } from "@/lib/key-figures";
+import { isStale, type FigureOk } from "@/lib/key-figures";
+import type { EconomyFigures } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui";
 
 /**
@@ -86,5 +88,41 @@ export function KeyFiguresSummary({
         Mer om föreningens ekonomi →
       </Link>
     </div>
+  );
+}
+
+/**
+ * Påminnelse i adminpanelen när ekonomiformuläret inte har sparats på ett år.
+ * Visas bara om det finns ett räkenskapsår – en förening som aldrig fyllt i
+ * nyckeltalen har inget att uppdatera.
+ */
+export function StaleFiguresNotice({
+  figures,
+  showLink = false,
+}: {
+  figures: EconomyFigures;
+  showLink?: boolean;
+}) {
+  if (!figures.fiscalYear || !isStale(figures.updatedAt)) return null;
+
+  return (
+    <Card className="border-amber-200 bg-amber-50">
+      <CardBody className="py-3">
+        <p className="text-sm text-amber-900">
+          <strong>Nyckeltalen har inte uppdaterats på över ett år.</strong> De
+          sparades senast {formatDate(figures.updatedAt)} och gäller räkenskapsåret{" "}
+          {figures.fiscalYear}. Har en ny årsredovisning kommit? Fyll i de nya
+          siffrorna så att sidan Föreningens ekonomi stämmer.
+        </p>
+        {showLink ? (
+          <Link
+            href="/admin/foreningsinfo/ekonomi"
+            className="mt-2 inline-block text-sm font-medium text-amber-900 underline hover:no-underline"
+          >
+            Uppdatera nyckeltalen →
+          </Link>
+        ) : null}
+      </CardBody>
+    </Card>
   );
 }

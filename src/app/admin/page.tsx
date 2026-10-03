@@ -1,9 +1,11 @@
 import Link from "next/link";
 import {
   getAllNews,
+  getEconomyFigures,
   getMaintenanceRequests,
   getPendingMembers,
 } from "@/lib/data";
+import { StaleFiguresNotice } from "@/components/key-figures";
 import { Card, CardBody } from "@/components/ui";
 
 function StatCard({
@@ -38,10 +40,11 @@ function StatCard({
 }
 
 export default async function AdminDashboard() {
-  const [pending, maintenance, news] = await Promise.all([
+  const [pending, maintenance, news, economy] = await Promise.all([
     getPendingMembers(),
     getMaintenanceRequests(),
     getAllNews(),
+    getEconomyFigures(),
   ]);
 
   const newRequests = maintenance.filter((r) => r.status !== "atgardad").length;
@@ -49,6 +52,8 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      <StaleFiguresNotice figures={economy} showLink />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Väntar på godkännande"
