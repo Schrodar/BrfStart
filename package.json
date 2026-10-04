@@ -15,7 +15,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "admin:promote": "tsx scripts/promote-admin.ts",
+    "admin:invite": "tsx scripts/invite-admin.ts",
     "association:create": "tsx scripts/create-association.ts",
     "association:delete": "tsx scripts/delete-association.ts",
     "users:prune": "tsx scripts/delete-orphan-users.ts",

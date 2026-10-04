@@ -6,6 +6,7 @@ import { getMemberByEmail, registerMember } from "@/lib/data";
 import { safeNextPath } from "@/lib/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { knowsPassword } from "@/lib/supabase/password-check";
 import { notifyNewRegistration } from "@/lib/email";
 
 export interface AuthState {
@@ -42,8 +43,9 @@ export async function loginAction(
   // Inloggningen är gemensam för alla föreningar (samma Supabase-projekt), men
   // profilen hör till EN förening. Saknas den skapas ingen tyst: styrelsen ska
   // slippa väntande rader de inte känner igen, och den som hamnat på fel
-  // förenings sida ska få veta det. Första adminkontot skapas i stället med
-  // scripts/promote-admin.ts, som lägger upp medlemsraden själv.
+  // förenings sida ska få veta det. Admins och boende som läggs upp utan
+  // registrering bjuds in (JnM-panelen eller scripts/invite-admin.ts) och
+  // skapas först när de har valt lösenord på /aktivera.
   const member = await getMemberByEmail(parsed.data.email);
   if (!member) {
     await supabase.auth.signOut();
@@ -60,8 +62,8 @@ export async function loginAction(
   // Den som skickats hit från en skyddad sida ska tillbaka dit efter
   // inloggningen. Väntande konton går fortfarande till vänteläget.
   const next = safeNextPath(String(formData.get("next") ?? ""));
-  if (member.role === "admin") redirect(next ?? "/admin");
   if (member.status !== "approved") redirect("/medlem/vantar");
+  if (member.role === "admin") redirect(next ?? "/admin");
   redirect(next ?? "/medlem");
 }
 
@@ -86,6 +88,16 @@ export async function registerAction(
     return { error: parsed.error.issues[0]?.message ?? "Ogiltiga uppgifter." };
   }
 
+  // Finns e-postadressen redan i föreningen skapas inget konto alls. Annars
+  // kunde den som först registrerar en adress som styrelsen redan lagt upp
+  // välja lösenordet – och ta över raden, även en admin-rad.
+  if (await getMemberByEmail(parsed.data.email)) {
+    return {
+      error:
+        "Den här e-postadressen finns redan i föreningen. Logga in, eller kontakta styrelsen om du inte kommer in.",
+    };
+  }
+
   // Skapa auth-användaren via Admin-API med bekräftad e-post. Då krävs ingen
   // e-postbekräftelse – styrelsens godkännande är grinden. Skapar ingen session,
   // så registreringen loggar inte in användaren.
@@ -95,8 +107,6 @@ export async function registerAction(
     password: parsed.data.password,
     email_confirm: true,
   });
-  // Har adressen redan ett konto behålls det gamla lösenordet. Det måste
-  // kvittot säga, annars står personen med ett lösenord som inte fungerar.
   let existingAccount = false;
   if (error) {
     const msg = error.message.toLowerCase();
@@ -104,11 +114,19 @@ export async function registerAction(
       msg.includes("registered") ||
       msg.includes("already") ||
       msg.includes("exists");
-    // Auth är global (delad databas). Om personen redan har ett konto (t.ex.
-    // medlem i en annan förening) fortsätter vi och skapar bara en Member-profil
-    // för DENNA förening – de loggar in med sitt befintliga lösenord.
     if (!alreadyExists) {
       return { error: "Registreringen misslyckades. Försök igen." };
+    }
+    // Auth är global (delad databas): kontot kan höra till en annan förening –
+    // eller ha skapats av någon annan med den här adressen, eftersom e-posten
+    // inte bekräftas. Profilen kopplas därför bara till kontot om den som
+    // registrerar sig kan dess lösenord. Annars kunde den riktiga personen
+    // kopplas till ett konto som någon annan styr.
+    if (!(await knowsPassword(parsed.data.email, parsed.data.password))) {
+      return {
+        error:
+          "E-postadressen har redan ett konto hos en förening på plattformen. Registrera dig med samma lösenord som där. Har du inte skapat något konto själv – kontakta styrelsen, så kan de skicka en inbjudan.",
+      };
     }
     existingAccount = true;
   }
@@ -126,7 +144,7 @@ export async function registerAction(
 
   return {
     success: existingAccount
-      ? "Tack! Din registrering har tagits emot och väntar på godkännande av styrelsen. E-postadressen har redan ett konto sedan tidigare – logga in med det lösenord du använder där. Lösenordet du skrev nu har inte sparats."
+      ? "Tack! Din registrering har tagits emot och väntar på godkännande av styrelsen. Du loggar in med samma lösenord som på ditt befintliga konto."
       : "Tack! Din registrering har tagits emot och väntar på godkännande av styrelsen. Du får ett mejl när kontot aktiverats.",
   };
 }

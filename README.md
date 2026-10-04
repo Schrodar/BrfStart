@@ -66,12 +66,25 @@ godkänner dem under **Admin → Medlemmar**. Registreringen skapar auth-använd
 via Supabase Admin-API med bekräftad e-post – ingen e-postbekräftelse behövs
 eftersom styrelsens godkännande är grinden.
 
-**Skapa den första administratören** – registrera ett konto (eller lägg till en
-användare i Supabase → Authentication) och kör sedan:
+Kontona är gemensamma för alla föreningar, och e-posten bekräftas inte. Därför
+gäller två regler vid registrering:
+
+- Finns e-postadressen redan i föreningen skapas inget konto.
+- Har adressen redan ett konto (t.ex. hos en annan förening) kopplas den nya
+  medlemmen bara till kontot om den som registrerar sig skriver in kontots
+  lösenord. Annars kunde någon skapa ett konto i en annans namn i förväg och
+  sedan logga in som hen.
+
+Admin-rollen kräver dessutom status "godkänd".
+
+**Skapa den första administratören** – bjud in hen från JnM-panelen, eller kör:
 
 ```bash
-npm run admin:promote -- brf-min-forening din@epost.se
+npm run admin:invite -- brf-min-forening din@epost.se https://min-forening.netlify.app "Ditt Namn"
 ```
+
+Skriptet skriver ut en engångslänk till föreningens `/aktivera`. Där väljer
+personen sitt lösenord, och först då skapas kontot och admin-raden.
 
 > Obs: seed-datans medlemmar (t.ex. `boende@example.se`) är enbart visningsdata –
 > för att logga in krävs ett riktigt konto i Supabase Auth.
@@ -93,7 +106,7 @@ Lägg till en ny förening (ny deploy):
 ```bash
 npm run association:create -- <slug> "<Föreningens namn>"   # skapa tenant-raden
 # sätt ASSOCIATION_SLUG=<slug> i den deployens .env
-npm run admin:promote -- <slug> <admin-epost>              # utse styrelse-admin
+npm run admin:invite -- <slug> <admin-epost> <sajtens-adress>  # bjud in styrelse-admin
 ```
 
 ## Funktioner
@@ -160,7 +173,7 @@ prisma/
   schema.prisma          Datamodell (speglar src/lib/types.ts)
   seed.ts                Demoinnehåll (npm run db:seed)
 scripts/
-  promote-admin.ts       Gör en användare till admin (npm run admin:promote)
+  invite-admin.ts        Bjuder in en styrelse-admin (npm run admin:invite)
 ```
 
 ## Backend-status

@@ -43,7 +43,7 @@ export function MaintenanceForm({
     ? {
         fullName: me.fullName,
         email: me.email,
-        canTrack: me.role === "admin" || me.status === "approved",
+        canTrack: me.status === "approved",
       }
     : null;
 

@@ -69,7 +69,7 @@ export function RegisterForm() {
         label="Lösenord"
         htmlFor="password"
         required
-        hint="Minst 6 tecken."
+        hint="Minst 6 tecken. Har du redan ett konto hos en annan förening här: använd samma lösenord."
       >
         <Input
           id="password"

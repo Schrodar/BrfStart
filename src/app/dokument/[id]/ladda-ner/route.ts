@@ -35,8 +35,8 @@ export async function GET(
 
   if (doc.visibility === "member") {
     const user = await getCurrentUser();
-    const allowed =
-      user && (user.role === "admin" || user.status === "approved");
+    // Godkänd krävs även för admins – rollen ensam räcker inte.
+    const allowed = user?.status === "approved";
     if (!allowed) return notFound();
   }
 

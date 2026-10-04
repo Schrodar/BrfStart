@@ -83,10 +83,14 @@ function supportUser(session: ActiveSupportSession): CurrentUser {
   };
 }
 
-/** Kräver admin-roll (styrelsen) eller ett pågående supportläge. */
+/**
+ * Kräver godkänd admin (styrelsen) eller ett pågående supportläge. Rollen räcker
+ * inte ensam: en admin-rad som inte är godkänd – eller har spärrats – ska inte
+ * öppna adminpanelen.
+ */
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (user?.role === "admin") return user;
+  if (user?.role === "admin" && user.status === "approved") return user;
 
   const support = await getSupportSession();
   if (support) return supportUser(support);
@@ -96,14 +100,12 @@ export async function requireAdmin(): Promise<CurrentUser> {
 }
 
 /**
- * Kräver godkänd medlem (admin släpps alltid igenom). Väntande konton skickas
- * till en informationssida.
+ * Kräver godkänd medlem – även admins måste vara godkända. Väntande konton
+ * skickas till en informationssida.
  */
 export async function requireApprovedMember(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/logga-in?next=/medlem");
-  if (user.role !== "admin" && user.status !== "approved") {
-    redirect("/medlem/vantar");
-  }
+  if (user.status !== "approved") redirect("/medlem/vantar");
   return user;
 }
