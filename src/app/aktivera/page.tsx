@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { getOpenInvitation } from "@/lib/data";
+import { getActivation } from "@/lib/data";
 import { Card, CardBody, Container, Section } from "@/components/ui";
 import { ActivateForm } from "./activate-form";
 
 /**
- * Inbjudningar från plattformspanelen. Länken bär en engångstoken i adressen,
- * så sidan skickar aldrig vidare den i en referrer och ska inte indexeras.
+ * Inbjudningar från JnM-panelen och styrelsen. Länken bär en engångstoken i
+ * adressen, så sidan skickar aldrig vidare den i en referrer och ska inte
+ * indexeras.
  */
 export const metadata: Metadata = {
   title: "Aktivera konto",
@@ -19,7 +20,12 @@ export default async function ActivatePage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token = "" } = await searchParams;
-  const invitation = await getOpenInvitation(token);
+  const activation = await getActivation(token);
+  const invitation = activation?.invitation;
+  const step =
+    activation?.mode === "verify"
+      ? "Bekräfta med lösenordet till ditt befintliga konto"
+      : "Välj ett lösenord";
 
   return (
     <Section>
@@ -28,12 +34,12 @@ export default async function ActivatePage({
           Aktivera ditt konto
         </h1>
 
-        {invitation ? (
+        {activation && invitation ? (
           <>
             <p className="mt-2 text-center text-sm text-muted">
               {invitation.role === "admin"
-                ? "Du har bjudits in som styrelseadmin. Välj ett lösenord, så kommer du direkt till adminpanelen."
-                : "Du har bjudits in som boende. Välj ett lösenord, så kommer du direkt till Mina sidor."}
+                ? `Du har bjudits in som styrelseadmin. ${step}, så kommer du direkt till adminpanelen.`
+                : `Du har bjudits in som boende. ${step}, så kommer du direkt till Mina sidor.`}
             </p>
             <Card className="mt-6">
               <CardBody>
@@ -43,6 +49,7 @@ export default async function ActivatePage({
                   fullName={invitation.fullName}
                   apartment={invitation.apartment}
                   isAdmin={invitation.role === "admin"}
+                  mode={activation.mode}
                 />
               </CardBody>
             </Card>

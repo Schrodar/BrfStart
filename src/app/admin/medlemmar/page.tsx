@@ -1,4 +1,5 @@
-import { getMembers } from "@/lib/data";
+import { getAssociationProfile, getMembers, listInvitations } from "@/lib/data";
+import type { InvitationItem } from "@/lib/data/invitations";
 import type { Member } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
@@ -6,9 +7,11 @@ import {
   approveMemberAction,
   deleteMemberAction,
   rejectMemberAction,
+  revokeInvitationAction,
   setListingPermissionAction,
   setRoleAction,
 } from "./actions";
+import { InviteForm } from "./invite-form";
 
 function MemberRow({ member }: { member: Member }) {
   return (
@@ -90,7 +93,11 @@ function MemberRow({ member }: { member: Member }) {
 }
 
 export default async function AdminMembersPage() {
-  const members = await getMembers();
+  const [members, invitations, profile] = await Promise.all([
+    getMembers(),
+    listInvitations(),
+    getAssociationProfile(),
+  ]);
   const pending = members.filter((m) => m.status === "pending");
   const others = members.filter((m) => m.status !== "pending");
 
@@ -98,8 +105,26 @@ export default async function AdminMembersPage() {
     <div className="space-y-8">
       <PageHeader
         title="Medlemmar"
-        description="Godkänn nya registreringar och hantera behörigheter."
+        description="Bjud in nya, godkänn registreringar och hantera behörigheter."
       />
+
+      <Card>
+        <CardBody>
+          <h2 className="mb-4 font-semibold">Bjud in</h2>
+          <InviteForm associationName={profile.name} />
+        </CardBody>
+      </Card>
+
+      {invitations.length > 0 ? (
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            Inbjudningar
+          </h2>
+          <div className="mt-3">
+            <InvitationTable invitations={invitations} />
+          </div>
+        </div>
+      ) : null}
 
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
@@ -150,6 +175,69 @@ function MemberTable({ members }: { members: Member[] }) {
         <tbody className="divide-y divide-border">
           {members.map((member) => (
             <MemberRow key={member.id} member={member} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const INVITATION_TONE = {
+  väntar: "warning",
+  aktiverad: "success",
+  utgången: "neutral",
+  återkallad: "neutral",
+} as const;
+
+function InvitationTable({ invitations }: { invitations: InvitationItem[] }) {
+  return (
+    <div className="overflow-x-auto rounded-card border border-border bg-surface">
+      <table className="w-full min-w-[640px] text-sm">
+        <thead className="border-b border-border text-left text-muted">
+          <tr>
+            <th className="px-4 py-3 font-medium">Namn</th>
+            <th className="px-4 py-3 font-medium">Roll</th>
+            <th className="px-4 py-3 font-medium">Inbjuden av</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 text-right font-medium">Åtgärd</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {invitations.map((inv) => (
+            <tr key={inv.id}>
+              <td className="px-4 py-3">
+                <p className="font-medium text-foreground">{inv.fullName}</p>
+                <p className="text-xs text-muted">{inv.email}</p>
+              </td>
+              <td className="px-4 py-3 text-muted">
+                {inv.role === "admin" ? "Styrelse (admin)" : "Boende"}
+                {inv.canManageListing ? ", annonsrätt" : ""}
+              </td>
+              <td className="px-4 py-3 text-muted">
+                {inv.invitedBy || "–"}
+                <span className="block text-xs">{formatDate(inv.createdAt)}</span>
+              </td>
+              <td className="px-4 py-3">
+                <Badge tone={INVITATION_TONE[inv.state]}>{inv.state}</Badge>
+                <span className="mt-1 block text-xs text-muted">
+                  {inv.state === "väntar"
+                    ? `till ${formatDate(inv.expiresAt)}${inv.emailedAt ? " · mejlad" : ""}`
+                    : inv.state === "aktiverad" && inv.usedAt
+                      ? formatDate(inv.usedAt)
+                      : ""}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-right">
+                {inv.state === "väntar" ? (
+                  <form action={revokeInvitationAction}>
+                    <input type="hidden" name="id" value={inv.id} />
+                    <button className="text-sm font-medium text-red-600 hover:underline">
+                      Återkalla
+                    </button>
+                  </form>
+                ) : null}
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>

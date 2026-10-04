@@ -182,9 +182,9 @@ model SupportSession {
   @@index([associationId, expiresAt])
 }
 
-/// Inbjudan till en förening, skapad i panelen och inlöst av /aktivera i den
-/// här appen. Ger ingen åtkomst i sig: Member-raden skapas först vid inlösen,
-/// när personen har valt sitt eget lösenord.
+/// Inbjudan till en förening, skapad i JnM-panelen eller av styrelsen och
+/// inlöst av /aktivera i den här appen. Ger ingen åtkomst i sig: Member-raden
+/// skapas först vid inlösen, när personen har valt eller bekräftat sitt lösenord.
 ///
 /// Bara sha256 av länkens token lagras. Länken är engångs och tidsbegränsad.
 model MemberInvitation {
@@ -201,11 +201,21 @@ model MemberInvitation {
   role             Role
   canManageListing Boolean @default(false)
 
+  /// Får inlösen byta lösenord på ett befintligt konto? Bara inbjudningar från
+  /// plattformsägaren (JnM-panelen, invite-admin.ts). Styrelsens inbjudningar
+  /// kräver i stället kontots befintliga lösenord – annars kunde en styrelse
+  /// bjuda in vilken adress som helst och ta över kontot.
+  resetsPassword Boolean @default(false)
+  /// Visningsnamn för den som bjöd in, t.ex. "JnM" eller styrelseledamotens namn.
+  invitedBy      String  @default("")
+
   tokenHash String    @unique
   createdAt DateTime  @default(now())
   expiresAt DateTime
   usedAt    DateTime?
   revokedAt DateTime?
+  /// När JnM-panelen mejlade länken. Null = länken har bara kopierats.
+  emailedAt DateTime?
 
   @@index([associationId, createdAt])
 }

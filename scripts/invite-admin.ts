@@ -62,6 +62,9 @@ async function main() {
       email: email!,
       fullName: rawName || email!.split("@")[0],
       role: "admin",
+      // Plattformsägarens inbjudan: får byta lösenord på ett befintligt konto.
+      resetsPassword: true,
+      invitedBy: "JnM",
       tokenHash: createHash("sha256").update(token).digest("hex"),
       expiresAt: new Date(Date.now() + INVITE_DAYS * 86_400_000),
     },
