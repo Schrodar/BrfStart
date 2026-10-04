@@ -107,6 +107,7 @@ model Association {
   economy               EconomyFigures?
   platformAccount       PlatformAccount?
   supportSessions       SupportSession[]
+  invitations           MemberInvitation[]
 }
 
 // ---------------------------------------------------------------------------
@@ -114,13 +115,13 @@ model Association {
 // ---------------------------------------------------------------------------
 //
 // Modellerna nedan tillhör plattformspanelen (eget privat repo). Föreningssajten
-// rör bara SupportSession, och då enbart för att släppa in en supportsession i
-// adminpanelen. De ligger ändå i den här filen, eftersom `prisma db push` utgår
-// härifrån och skulle radera tabeller som saknas.
+// rör bara SupportSession och MemberInvitation, och då enbart för att lösa in
+// panelens engångslänkar. De ligger ändå i den här filen, eftersom
+// `prisma db push` utgår härifrån och skulle radera tabeller som saknas.
 
 /// Ägaren av plattformen – inte en förenings styrelse.
 model PlatformAdmin {
-  id String @id @default(uuid())
+  id         String    @id @default(uuid())
   /// Supabase Auth-användarens id. Kopplingen är id:t och inte e-posten, som kan bytas.
   userId     String    @unique
   email      String
@@ -129,6 +130,7 @@ model PlatformAdmin {
   disabledAt DateTime?
 
   supportSessions SupportSession[]
+  invitations     MemberInvitation[]
   auditEvents     AuditEvent[]
 }
 
@@ -178,6 +180,34 @@ model SupportSession {
   endedAt       DateTime?
 
   @@index([associationId, expiresAt])
+}
+
+/// Inbjudan till en förening, skapad i panelen och inlöst av /aktivera i den
+/// här appen. Ger ingen åtkomst i sig: Member-raden skapas först vid inlösen,
+/// när personen har valt sitt eget lösenord.
+///
+/// Bara sha256 av länkens token lagras. Länken är engångs och tidsbegränsad.
+model MemberInvitation {
+  id              String         @id @default(uuid())
+  associationId   String
+  association     Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  platformAdminId String?
+  platformAdmin   PlatformAdmin? @relation(fields: [platformAdminId], references: [id], onDelete: SetNull)
+
+  /// Alltid gemener – Supabase Auth lagrar e-post så.
+  email            String
+  fullName         String
+  apartment        String  @default("")
+  role             Role
+  canManageListing Boolean @default(false)
+
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+
+  @@index([associationId, createdAt])
 }
 
 /// Loggbok över plattformsadmins åtgärder. associationId är avsiktligt ingen

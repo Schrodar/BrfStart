@@ -13,6 +13,7 @@ export * from "./board";
 export * from "./buildings";
 export * from "./documents";
 export * from "./economy";
+export * from "./invitations";
 export * from "./maintenance";
 export * from "./members";
 export * from "./news";
