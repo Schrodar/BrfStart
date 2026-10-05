@@ -4,10 +4,13 @@ import { getOrCreateOwnedApartment } from "@/lib/data";
 import { Badge, Card, CardBody } from "@/components/ui";
 import { FactsForm } from "@/components/apartment/facts-form";
 import { FloorPlanManager } from "@/components/apartment/floor-plan-manager";
+import { PhotoManager } from "@/components/apartment/photo-manager";
 import {
   removeFloorPlanAction,
+  removePhotoAction,
   updateFactsAction,
   uploadFloorPlanAction,
+  uploadPhotoAction,
 } from "./actions";
 
 export default async function MyApartmentPage() {
@@ -60,24 +63,39 @@ export default async function MyApartmentPage() {
         </CardBody>
       </Card>
 
-      {/* Försäljningen har en egen sida – här står bara vägen dit. */}
-      {user.canManageListing ? (
-        <Card>
-          <CardBody className="flex flex-wrap items-center justify-between gap-3">
+      <Card>
+        <CardBody className="space-y-3">
+          <div>
+            <h3 className="font-semibold">Bilder</h3>
             <p className="text-sm text-muted">
-              {apartment.forSale
-                ? "Din lägenhet är utlagd till salu."
-                : "Vill du sälja? Skapa en annons på egen sida."}
+              Ladda upp bilder inför en försäljning. De visas publikt först när
+              en annons publiceras – första bilden blir omslagsbild.
             </p>
-            <Link
-              href="/medlem/salja"
-              className="text-sm font-medium text-brand-700 hover:underline"
-            >
-              {apartment.forSale ? "Hantera annonsen →" : "Sälja bostaden →"}
-            </Link>
-          </CardBody>
-        </Card>
-      ) : null}
+          </div>
+          <PhotoManager
+            apartment={apartment}
+            uploadAction={uploadPhotoAction}
+            removeAction={removePhotoAction}
+          />
+        </CardBody>
+      </Card>
+
+      {/* Försäljningen har en egen sida – här står bara vägen dit. */}
+      <Card>
+        <CardBody className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            {apartment.forSale
+              ? "Din lägenhet har en annons."
+              : "Vill du sälja? Skapa en annons med bilderna och planritningen härifrån."}
+          </p>
+          <Link
+            href="/medlem/salja"
+            className="text-sm font-medium text-brand-700 hover:underline"
+          >
+            {apartment.forSale ? "Hantera annonsen →" : "Sälja bostaden →"}
+          </Link>
+        </CardBody>
+      </Card>
     </div>
   );
 }

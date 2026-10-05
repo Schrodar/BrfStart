@@ -598,6 +598,9 @@ model Apartment {
   hemnetUrl             String        @default("")
   showFloorPlanPublicly Boolean       @default(false)
   publishedAt           DateTime?
+  /// Den boende har skickat utkastet till styrelsen för publicering. Nollställs
+  /// när annonsen publiceras eller den boende tar tillbaka den.
+  submittedAt           DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

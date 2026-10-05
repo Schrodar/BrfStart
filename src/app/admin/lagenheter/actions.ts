@@ -10,6 +10,7 @@ import {
   createBuilding,
   deleteApartment,
   deleteBuilding,
+  releaseApartment,
   reorderBuildings,
   setApartmentBuilding,
   setFloorPlan,
@@ -259,4 +260,18 @@ export async function bulkAddApartmentsAction(
         ? `${created} lägenheter skapades. ${skipped.length} hoppades över (fanns redan).`
         : `${created} lägenheter skapades.`,
   };
+}
+
+/**
+ * Ägarbyte utan annons på sajten: bilder och annonstexter raderas och den
+ * boende kopplas bort. Fakta och planritning ligger kvar till nästa ägare,
+ * som kopplas när hen registrerar sig och öppnar Min lägenhet.
+ */
+export async function releaseApartmentAction(fd: FormData): Promise<void> {
+  await requireAdmin();
+  const id = aptId(fd);
+  await releaseApartment(id);
+  revalidatePath("/admin");
+  revalidatePath("/admin/till-salu");
+  revalidate(id);
 }

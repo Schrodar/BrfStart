@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import {
   createInvitation,
   deleteMember,
+  releaseApartmentOf,
   revokeInvitation,
   setMemberCanManageListing,
   setMemberRole,
@@ -34,11 +35,22 @@ export async function rejectMemberAction(formData: FormData): Promise<void> {
   revalidate();
 }
 
+/**
+ * Tar bort ett konto – oftast säljaren efter en försäljning. Lägenheten
+ * frigörs först: annonsen och bilderna raderas, fakta och planritning ligger
+ * kvar till nästa ägare.
+ */
 export async function deleteMemberAction(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
+  await releaseApartmentOf(id);
   await deleteMember(id);
   revalidate();
+  revalidatePath("/admin/till-salu");
+  revalidatePath("/admin/lagenheter");
+  revalidatePath("/till-salu");
+  revalidatePath("/till-salu/[id]", "page");
+  revalidatePath("/");
 }
 
 export async function setRoleAction(formData: FormData): Promise<void> {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  countSubmittedListings,
   getAllNews,
   getEconomyFigures,
   getMaintenanceRequests,
@@ -40,11 +41,12 @@ function StatCard({
 }
 
 export default async function AdminDashboard() {
-  const [pending, maintenance, news, economy] = await Promise.all([
+  const [pending, maintenance, news, economy, submittedListings] = await Promise.all([
     getPendingMembers(),
     getMaintenanceRequests(),
     getAllNews(),
     getEconomyFigures(),
+    countSubmittedListings(),
   ]);
 
   const newRequests = maintenance.filter((r) => r.status !== "atgardad").length;
@@ -65,6 +67,12 @@ export default async function AdminDashboard() {
           label="Öppna felanmälningar"
           value={newRequests}
           href="/admin/felanmalningar"
+          highlight
+        />
+        <StatCard
+          label="Annonser att godkänna"
+          value={submittedListings}
+          href="/admin/till-salu"
           highlight
         />
         <StatCard

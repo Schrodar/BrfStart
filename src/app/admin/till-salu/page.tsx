@@ -58,6 +58,13 @@ export default async function AdminListingsPage() {
                             {formatDate(a.publishedAt)}
                           </p>
                         </>
+                      ) : a.submittedAt ? (
+                        <>
+                          <Badge tone="brand">Väntar på godkännande</Badge>
+                          <p className="mt-1 text-xs text-muted">
+                            Skickad {formatDate(a.submittedAt)}
+                          </p>
+                        </>
                       ) : (
                         <Badge tone="warning">Utkast</Badge>
                       )}

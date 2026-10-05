@@ -147,6 +147,10 @@ export default async function AdminMembersPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
           Alla konton
         </h2>
+        <p className="mt-1 text-sm text-muted">
+          Tar du bort ett konto efter en försäljning raderas lägenhetens annons
+          och bilder. Fakta och planritning ligger kvar till nästa ägare.
+        </p>
         <div className="mt-3">
           {others.length === 0 ? (
             <EmptyState title="Inga aktiva konton" />

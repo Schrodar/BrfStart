@@ -6,6 +6,7 @@ import { FactsForm } from "@/components/apartment/facts-form";
 import { FloorPlanManager } from "@/components/apartment/floor-plan-manager";
 import {
   deleteApartmentAction,
+  releaseApartmentAction,
   removeFloorPlanAction,
   updateFactsAction,
   uploadFloorPlanAction,
@@ -91,6 +92,28 @@ export default async function AdminApartmentEditPage({ params }: Props) {
           )}
         </CardBody>
       </Card>
+
+      {apartment.ownerMemberId ? (
+        <Card className="border-red-200">
+          <CardBody className="flex flex-wrap items-center justify-between gap-4">
+            <div className="max-w-xl">
+              <h3 className="font-semibold">Registrera ägarbyte</h3>
+              <p className="mt-1 text-sm text-muted">
+                Använd när lägenheten har bytt ägare. Annonsen och alla bilder
+                raderas, och den boende kopplas bort från lägenheten. Fakta och
+                planritning ligger kvar och följer med till nästa ägare. Går inte
+                att ångra.
+              </p>
+            </div>
+            <form action={releaseApartmentAction}>
+              <input type="hidden" name="apartmentId" value={apartment.id} />
+              <button className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+                Registrera ägarbyte
+              </button>
+            </form>
+          </CardBody>
+        </Card>
+      ) : null}
     </div>
   );
 }

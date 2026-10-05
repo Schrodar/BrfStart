@@ -3,33 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { requireApprovedMember } from "@/lib/auth";
 import {
-  addPhoto,
   endListing,
   getOrCreateOwnedApartment,
   publishListing,
-  removePhoto,
   startListing,
+  submitListing,
   unpublishListing,
   updateListing,
+  withdrawListing,
 } from "@/lib/data";
-import {
-  BUCKET_PHOTOS,
-  IMAGE_TYPES,
-  removeFile,
-  uploadFile,
-  validateFile,
-} from "@/lib/storage";
 import type { FormState } from "@/lib/form";
+import { canEditListing, LOCKED_WHILE_PUBLISHED } from "@/lib/listing-rules";
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? "");
 
 const NO_APARTMENT = "Din lägenhet kunde inte kopplas. Kontakta styrelsen.";
-const NO_PERMISSION = "Du saknar behörighet att hantera annons.";
 
 /**
  * Den boende hanterar bara sin EGEN lägenhet – id:t kommer aldrig från
  * formuläret utan slås upp från inloggningen. Därför kan ingen ändra en
  * annan lägenhets annons genom att skicka ett annat id.
+ *
+ * Alla godkända boende får förbereda och ta ner sin annons. Publicera kräver
+ * annonsrätt; utan den skickas annonsen till styrelsen (src/lib/listing-rules.ts).
  */
 async function mine() {
   const user = await requireApprovedMember();
@@ -44,14 +40,15 @@ function revalidate() {
   revalidatePath("/medlem/salja");
   revalidatePath("/medlem/min-lagenhet");
   revalidatePath("/admin/till-salu");
+  revalidatePath("/admin");
   revalidatePath("/till-salu");
   revalidatePath("/till-salu/[id]", "page");
   revalidatePath("/");
 }
 
 export async function startListingAction(): Promise<void> {
-  const { user, apartment } = await mine();
-  if (!apartment || !user.canManageListing) return;
+  const { apartment } = await mine();
+  if (!apartment) return;
   await startListing(apartment.id);
   revalidate();
 }
@@ -62,7 +59,9 @@ export async function updateListingAction(
 ): Promise<FormState> {
   const { user, apartment } = await mine();
   if (!apartment) return { error: NO_APARTMENT };
-  if (!user.canManageListing) return { error: NO_PERMISSION };
+  if (!canEditListing(user.canManageListing, apartment)) {
+    return { error: LOCKED_WHILE_PUBLISHED };
+  }
   await updateListing(apartment.id, {
     price: str(fd, "price"),
     monthlyFee: str(fd, "monthlyFee"),
@@ -78,6 +77,7 @@ export async function updateListingAction(
   return { success: "Annonsen sparad." };
 }
 
+/** Bara med annonsrätt – annars är det styrelsen som publicerar. */
 export async function publishAction(): Promise<void> {
   const { user, apartment } = await mine();
   if (!apartment || !user.canManageListing) return;
@@ -85,41 +85,33 @@ export async function publishAction(): Promise<void> {
   revalidate();
 }
 
+/** Skickar utkastet till styrelsen, som publicerar under Admin → Till salu. */
+export async function submitListingAction(): Promise<void> {
+  const { apartment } = await mine();
+  if (!apartment) return;
+  await submitListing(apartment.id);
+  revalidate();
+}
+
+/** Tar tillbaka ett utkast som skickats till styrelsen. */
+export async function withdrawListingAction(): Promise<void> {
+  const { apartment } = await mine();
+  if (!apartment) return;
+  await withdrawListing(apartment.id);
+  revalidate();
+}
+
+/** Att ta ner sin egen annons får alla – den finns kvar som utkast. */
 export async function unpublishAction(): Promise<void> {
-  const { user, apartment } = await mine();
-  if (!apartment || !user.canManageListing) return;
+  const { apartment } = await mine();
+  if (!apartment) return;
   await unpublishListing(apartment.id);
   revalidate();
 }
 
 export async function endListingAction(): Promise<void> {
-  const { user, apartment } = await mine();
-  if (!apartment || !user.canManageListing) return;
+  const { apartment } = await mine();
+  if (!apartment) return;
   await endListing(apartment.id);
-  revalidate();
-}
-
-export async function uploadPhotoAction(
-  _prev: FormState,
-  fd: FormData,
-): Promise<FormState> {
-  const { user, apartment } = await mine();
-  if (!apartment) return { error: NO_APARTMENT };
-  if (!user.canManageListing) return { error: NO_PERMISSION };
-  const file = fd.get("file") as File | null;
-  const err = validateFile(file, IMAGE_TYPES);
-  if (err) return { error: err };
-  const up = await uploadFile(BUCKET_PHOTOS, apartment.id, file!);
-  if (!up.ok) return { error: up.error };
-  await addPhoto(apartment.id, up.path);
-  revalidate();
-  return { success: "Foto uppladdat." };
-}
-
-export async function removePhotoAction(fd: FormData): Promise<void> {
-  const { user, apartment } = await mine();
-  if (!apartment || !user.canManageListing) return;
-  const path = await removePhoto(String(fd.get("photoId") ?? ""), apartment.id);
-  if (path) await removeFile(BUCKET_PHOTOS, path);
   revalidate();
 }

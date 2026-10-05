@@ -7,6 +7,7 @@ import {
   addPhoto,
   endListing,
   publishListing,
+  releaseApartment,
   removePhoto,
   startListing,
   unpublishListing,
@@ -25,8 +26,11 @@ const str = (fd: FormData, key: string) => String(fd.get(key) ?? "");
 const aptId = (fd: FormData) => String(fd.get("apartmentId") ?? "");
 
 function revalidate(id?: string) {
+  revalidatePath("/admin");
   revalidatePath("/admin/till-salu");
   revalidatePath("/admin/lagenheter");
+  revalidatePath("/medlem/min-lagenhet");
+  revalidatePath("/medlem/salja");
   if (id) {
     revalidatePath(`/admin/till-salu/${id}`);
     revalidatePath(`/admin/lagenheter/${id}`);
@@ -111,4 +115,17 @@ export async function removePhotoAction(fd: FormData): Promise<void> {
   const path = await removePhoto(String(fd.get("photoId") ?? ""));
   if (path) await removeFile(BUCKET_PHOTOS, path);
   revalidate(id);
+}
+
+/**
+ * Försäljningen är klar: annonsen, annonstexterna och bilderna raderas och
+ * säljaren kopplas bort från lägenheten. Fakta och planritning ligger kvar
+ * till nästa ägare.
+ */
+export async function completeSaleAction(fd: FormData): Promise<void> {
+  await requireAdmin();
+  const id = aptId(fd);
+  await releaseApartment(id);
+  revalidate(id);
+  redirect("/admin/till-salu");
 }

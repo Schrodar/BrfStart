@@ -353,6 +353,8 @@ export interface Apartment {
   hemnetUrl: string;
   showFloorPlanPublicly: boolean;
   publishedAt: string | null;
+  /** Den boende har skickat utkastet till styrelsen för publicering. */
+  submittedAt: string | null;
 
   createdAt: string;
   updatedAt: string;

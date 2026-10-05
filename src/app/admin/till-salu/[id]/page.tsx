@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getApartmentById } from "@/lib/data";
+import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import { ListingForm } from "@/components/apartment/listing-form";
 import { PhotoManager } from "@/components/apartment/photo-manager";
 import {
+  completeSaleAction,
   endListingAction,
   publishAction,
   removePhotoAction,
@@ -48,6 +50,8 @@ export default async function AdminListingEditPage({ params }: Props) {
           <div className="flex items-center gap-3">
             {published ? (
               <Badge tone="success">Publicerad</Badge>
+            ) : apartment.submittedAt ? (
+              <Badge tone="brand">Väntar på godkännande</Badge>
             ) : (
               <Badge tone="warning">Utkast</Badge>
             )}
@@ -58,6 +62,11 @@ export default async function AdminListingEditPage({ params }: Props) {
               >
                 Visa publik annons →
               </Link>
+            ) : apartment.submittedAt ? (
+              <span className="text-sm text-muted">
+                Den boende skickade annonsen {formatDate(apartment.submittedAt)}.
+                Granska och publicera.
+              </span>
             ) : (
               <span className="text-sm text-muted">Syns inte publikt ännu.</span>
             )}
@@ -104,6 +113,26 @@ export default async function AdminListingEditPage({ params }: Props) {
             uploadAction={uploadPhotoAction}
             removeAction={removePhotoAction}
           />
+        </CardBody>
+      </Card>
+
+      <Card className="border-red-200">
+        <CardBody className="flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-xl">
+            <h3 className="font-semibold">Försäljningen är klar</h3>
+            <p className="mt-1 text-sm text-muted">
+              Använd när lägenheten har bytt ägare. Annonsen, annonstexterna och
+              alla bilder raderas, och säljaren kopplas bort från lägenheten.
+              Fakta och planritning ligger kvar till nästa ägare. Går inte att
+              ångra.
+            </p>
+          </div>
+          <form action={completeSaleAction}>
+            <input type="hidden" name="apartmentId" value={apartment.id} />
+            <button className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+              Försäljningen är klar
+            </button>
+          </form>
         </CardBody>
       </Card>
     </div>

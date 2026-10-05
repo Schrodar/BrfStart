@@ -10,6 +10,7 @@ import {
   BUCKET_PHOTOS,
   getPublicUrl,
   getSignedUrl,
+  removeFile,
 } from "@/lib/storage";
 
 type DbApartmentWithPhotos = DbApartment & { photos: DbApartmentPhoto[] };
@@ -54,6 +55,7 @@ function toApartment(
     hemnetUrl: a.hemnetUrl,
     showFloorPlanPublicly: a.showFloorPlanPublicly,
     publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+    submittedAt: a.submittedAt ? a.submittedAt.toISOString() : null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
     photos: a.photos.map(toPhoto),
@@ -72,22 +74,37 @@ async function floorPlanUrlFor(
 // Läsning
 // ---------------------------------------------------------------------------
 
+/**
+ * Ordningen i admin/Till salu: det som väntar på styrelsen först, sedan
+ * utkast, sist publicerade.
+ */
+function listingRank(a: Apartment): number {
+  if (a.listingStatus === "published") return 2;
+  return a.submittedAt ? 0 : 1;
+}
+
 /** Alla lägenheter som är till salu – utkast och publicerade (admin/Till salu). */
 export async function getListings(): Promise<Apartment[]> {
   const { db } = await getTenantDb();
   const rows = await db.apartment.findMany({
     where: { forSale: true },
     include: withPhotos,
-    orderBy: { listingStatus: "asc" },
   });
   return rows
     .map((a) => toApartment(a, null))
     .sort(
       (x, y) =>
-        Number(x.listingStatus === "published") -
-          Number(y.listingStatus === "published") ||
+        listingRank(x) - listingRank(y) ||
         compareApartmentNumbers(x.number, y.number),
     );
+}
+
+/** Antal annonser som boende skickat till styrelsen (adminöversikten). */
+export async function countSubmittedListings(): Promise<number> {
+  const { db } = await getTenantDb();
+  return db.apartment.count({
+    where: { forSale: true, listingStatus: "draft", submittedAt: { not: null } },
+  });
 }
 
 /** Lägenheter som INTE är till salu – urvalet när en ny annons ska påbörjas. */
@@ -359,7 +376,30 @@ export async function publishListing(id: string): Promise<void> {
   const { db } = await getTenantDb();
   await db.apartment.updateMany({
     where: { id },
-    data: { forSale: true, listingStatus: "published", publishedAt: new Date() },
+    data: {
+      forSale: true,
+      listingStatus: "published",
+      publishedAt: new Date(),
+      submittedAt: null,
+    },
+  });
+}
+
+/** Den boende skickar utkastet till styrelsen, som publicerar. */
+export async function submitListing(id: string): Promise<void> {
+  const { db } = await getTenantDb();
+  await db.apartment.updateMany({
+    where: { id, forSale: true, listingStatus: "draft" },
+    data: { submittedAt: new Date() },
+  });
+}
+
+/** Den boende tar tillbaka ett utkast som skickats till styrelsen. */
+export async function withdrawListing(id: string): Promise<void> {
+  const { db } = await getTenantDb();
+  await db.apartment.updateMany({
+    where: { id },
+    data: { submittedAt: null },
   });
 }
 
@@ -377,8 +417,67 @@ export async function endListing(id: string): Promise<void> {
   const { db } = await getTenantDb();
   await db.apartment.updateMany({
     where: { id },
-    data: { forSale: false, listingStatus: "draft", publishedAt: null },
+    data: { forSale: false, listingStatus: "draft", publishedAt: null, submittedAt: null },
   });
+}
+
+/**
+ * Det som hör till en försäljning och inte till lägenheten. Fakta (våning,
+ * rum, storlek, beskrivning) och planritningen behålls till nästa ägare.
+ */
+export const SALE_DATA_RESET = {
+  forSale: false,
+  listingStatus: "draft",
+  publishedAt: null,
+  submittedAt: null,
+  price: "",
+  monthlyFee: "",
+  viewingInfo: "",
+  saleDescription: "",
+  brokerName: "",
+  brokerPhone: "",
+  brokerEmail: "",
+  hemnetUrl: "",
+  showFloorPlanPublicly: false,
+} as const;
+
+/**
+ * Rensar en avslutad försäljning: annonsfälten töms och bilderna raderas,
+ * både raderna och filerna. Fakta och planritning ligger kvar.
+ */
+export async function clearSaleData(apartmentId: string): Promise<void> {
+  const { db } = await getTenantDb();
+  const photos = await db.apartmentPhoto.findMany({
+    where: { apartmentId },
+    select: { path: true },
+  });
+  await db.apartmentPhoto.deleteMany({ where: { apartmentId } });
+  await db.apartment.updateMany({ where: { id: apartmentId }, data: SALE_DATA_RESET });
+  await Promise.all(photos.map((p) => removeFile(BUCKET_PHOTOS, p.path)));
+}
+
+/**
+ * Ägarbyte: rensar försäljningen och kopplar bort den boende, så att nästa
+ * ägare kan kopplas till lägenheten och ärver fakta och planritning – men
+ * inte säljarens bilder och annons.
+ */
+export async function releaseApartment(apartmentId: string): Promise<void> {
+  const { db } = await getTenantDb();
+  await clearSaleData(apartmentId);
+  await db.apartment.updateMany({
+    where: { id: apartmentId },
+    data: { ownerMemberId: null },
+  });
+}
+
+/** Ägarbyte för medlemmens lägenhet, om hen har någon (innan kontot tas bort). */
+export async function releaseApartmentOf(memberId: string): Promise<void> {
+  const { db } = await getTenantDb();
+  const owned = await db.apartment.findFirst({
+    where: { ownerMemberId: memberId },
+    select: { id: true },
+  });
+  if (owned) await releaseApartment(owned.id);
 }
 
 export async function addPhoto(
