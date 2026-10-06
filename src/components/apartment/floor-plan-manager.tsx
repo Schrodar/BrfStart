@@ -60,7 +60,7 @@ export function FloorPlanManager({
         <Field
           label={apartment.floorPlanUrl ? "Ersätt planritning" : "Ladda upp planritning"}
           htmlFor="file"
-          hint="Bild (PNG/JPG) eller PDF, max 10 MB."
+          hint="Bild (PNG/JPG) eller PDF, max 5 MB."
         >
           <FileInput
             id="file"

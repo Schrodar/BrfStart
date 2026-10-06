@@ -102,6 +102,73 @@ body {
   text-underline-offset: 2px;
 }
 
+/* Artikeltext på nyhetssidan: lite större och luftigare, rubriker i serif. */
+.prose-editorial {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+}
+.prose-editorial > * + * {
+  margin-top: 1.25rem;
+}
+.prose-editorial h2,
+.prose-editorial h3 {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.prose-editorial h2 {
+  font-size: 1.625rem;
+  line-height: 1.25;
+  margin-top: 2.75rem;
+}
+.prose-editorial h3 {
+  font-size: 1.3125rem;
+  margin-top: 2rem;
+}
+.prose-editorial a {
+  color: var(--color-moss);
+}
+
+/* Nyhetskort: mjuka, låga skuggor och lugna övergångar. Kortet lyfter lite,
+   bilden zoomar sakta och pilen i "Läs mer" glider fram. */
+.news-card {
+  box-shadow:
+    0 1px 2px rgb(41 43 39 / 0.04),
+    0 12px 32px -18px rgb(41 43 39 / 0.18);
+  transition:
+    box-shadow 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.news-card:hover,
+.news-card:focus-within {
+  box-shadow:
+    0 2px 4px rgb(41 43 39 / 0.05),
+    0 22px 44px -20px rgb(41 43 39 / 0.26);
+  transform: translateY(-2px);
+}
+.news-card .news-card-image {
+  transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.news-card:hover .news-card-image {
+  transform: scale(1.03);
+}
+.news-card .news-card-arrow {
+  transition: transform 300ms ease-out;
+}
+.news-card:hover .news-card-arrow {
+  transform: translateX(4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-card,
+  .news-card:hover,
+  .news-card:focus-within,
+  .news-card:hover .news-card-image,
+  .news-card:hover .news-card-arrow {
+    transform: none;
+  }
+}
+
 /* Hero: mjuk fade-in (uppåt) av texten över videobakgrunden. */
 @keyframes heroFadeUp {
   from {

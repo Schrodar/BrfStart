@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 import type { FormState } from "@/lib/form";
 import type { NewsPost } from "@/lib/types";
 import {
   Field,
+  FileInput,
   FormError,
   Input,
   SubmitButton,
@@ -60,6 +62,33 @@ export function NewsForm({
           className="min-h-56"
           required
         />
+      </Field>
+
+      <Field
+        label="Bild (valfri)"
+        htmlFor="image"
+        hint="Visas i nyhetslistan och överst i artikeln. Liggande format, gärna minst 1600 px brett. JPG, PNG eller WebP, max 5 MB."
+      >
+        {defaults?.imageUrl ? (
+          <div className="mb-3 flex items-center gap-4">
+            <Image
+              src={defaults.imageUrl}
+              alt=""
+              width={160}
+              height={120}
+              className="h-20 w-28 rounded-lg border border-border object-cover"
+            />
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                name="removeImage"
+                className="h-4 w-4 rounded border-border"
+              />
+              Ta bort bilden
+            </label>
+          </div>
+        ) : null}
+        <FileInput id="image" name="image" accept="image/png,image/jpeg,image/webp" />
       </Field>
 
       <label className="flex items-center gap-2 text-sm">

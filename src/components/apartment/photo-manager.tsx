@@ -55,7 +55,7 @@ export function PhotoManager({
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="apartmentId" value={apartment.id} />
         {state.error ? <FormError>{state.error}</FormError> : null}
-        <Field label="Lägg till foto" htmlFor="photo" hint="Bild (PNG/JPG), max 10 MB.">
+        <Field label="Lägg till foto" htmlFor="photo" hint="Bild (PNG/JPG), max 5 MB.">
           <FileInput
             id="photo"
             name="file"

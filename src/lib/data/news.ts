@@ -1,6 +1,7 @@
 import type { NewsPost as DbNewsPost } from "@prisma/client";
 import type { NewsPost } from "@/lib/types";
 import { getTenantDb } from "@/lib/tenant";
+import { BUCKET_NEWS, getPublicUrl } from "@/lib/storage";
 import { makeId, slugify } from "@/lib/utils";
 
 function toNews(n: DbNewsPost): NewsPost {
@@ -10,6 +11,7 @@ function toNews(n: DbNewsPost): NewsPost {
     title: n.title,
     excerpt: n.excerpt,
     body: n.body,
+    imageUrl: n.imagePath ? getPublicUrl(BUCKET_NEWS, n.imagePath) : null,
     published: n.published,
     publishedAt: n.publishedAt ? n.publishedAt.toISOString() : null,
     createdAt: n.createdAt.toISOString(),
@@ -101,7 +103,31 @@ export async function updateNews(
   return row ? toNews(row) : null;
 }
 
-export async function deleteNews(id: string): Promise<void> {
+/**
+ * Sätter (eller tar bort, med null) nyhetens bild. Returnerar den tidigare
+ * bildens sökväg, så att anroparen kan ta bort filen ur bucketen.
+ */
+export async function setNewsImage(
+  id: string,
+  imagePath: string | null,
+): Promise<string | null> {
   const { db } = await getTenantDb();
+  const existing = await db.newsPost.findFirst({
+    where: { id },
+    select: { imagePath: true },
+  });
+  if (!existing) return null;
+  await db.newsPost.updateMany({ where: { id }, data: { imagePath } });
+  return existing.imagePath;
+}
+
+/** Tar bort nyheten och returnerar bildens sökväg (för storage-städning). */
+export async function deleteNews(id: string): Promise<string | null> {
+  const { db } = await getTenantDb();
+  const existing = await db.newsPost.findFirst({
+    where: { id },
+    select: { imagePath: true },
+  });
   await db.newsPost.deleteMany({ where: { id } });
+  return existing?.imagePath ?? null;
 }

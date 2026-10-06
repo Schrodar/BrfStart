@@ -6,6 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * - floor-plans:      PRIVAT bucket (planritningar) → server-genererade signed URLs.
  * - documents:        PRIVAT bucket (föreningsdokument) → signed URLs via
  *                     /dokument/[id]/ladda-ner, som kontrollerar synligheten.
+ * - news-images:      PUBLIK bucket (nyhetsbilder) → stabila publika URL:er.
  *
  * Buckets delas av alla föreningar som kör mot samma Supabase-projekt, så
  * anroparen ansvarar för att prefixa med associationId (se uploadFile).
@@ -17,11 +18,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const BUCKET_PHOTOS = "apartment-photos";
 export const BUCKET_FLOORPLANS = "floor-plans";
 export const BUCKET_DOCUMENTS = "documents";
+export const BUCKET_NEWS = "news-images";
 
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const FLOORPLAN_TYPES = [...IMAGE_TYPES, "application/pdf"];
 export const DOCUMENT_TYPES = ["application/pdf", ...IMAGE_TYPES];
-export const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+export const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB – se bodySizeLimit i next.config.ts
 
 const EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -36,7 +38,7 @@ export function validateFile(
   allowed: string[],
 ): string | null {
   if (!file || file.size === 0) return "Ingen fil vald.";
-  if (file.size > MAX_FILE_BYTES) return "Filen är för stor (max 10 MB).";
+  if (file.size > MAX_FILE_BYTES) return "Filen är för stor (max 5 MB).";
   if (!allowed.includes(file.type)) return "Filtypen stöds inte.";
   return null;
 }

@@ -39,6 +39,8 @@ export interface NewsPost {
   excerpt: string;
   /** Brödtext. Enkel markdown (## rubrik, tomrad = nytt stycke). */
   body: string;
+  /** Publik bildadress, eller null om nyheten saknar bild. */
+  imageUrl: string | null;
   published: boolean;
   publishedAt: string | null; // ISO, null om utkast
   createdAt: string;

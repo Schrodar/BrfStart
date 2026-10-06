@@ -77,7 +77,7 @@ export function DocumentForm({
           label="Fil"
           htmlFor="file"
           required
-          hint="PDF eller bild, max 10 MB."
+          hint="PDF eller bild, max 5 MB."
         >
           <FileInput
             id="file"

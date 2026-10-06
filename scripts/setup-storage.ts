@@ -63,6 +63,7 @@ async function main() {
   await ensureBucket("apartment-photos", true);
   await ensureBucket("floor-plans", false);
   await ensureBucket("documents", false);
+  await ensureBucket("news-images", true);
   console.info("Klar.");
 }
 

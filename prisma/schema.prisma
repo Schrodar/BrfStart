@@ -279,6 +279,9 @@ model NewsPost {
   body        String
   published   Boolean   @default(false)
   publishedAt DateTime?
+  /// Sökväg i den publika bucketen "news-images": <newsId>/<uuid>.<ext>.
+  /// Null = ingen bild (listan visar en platshållare).
+  imagePath   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
