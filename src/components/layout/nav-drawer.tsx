@@ -183,7 +183,7 @@ export function NavDrawer({
           open
             ? "border-line bg-bone text-ink shadow-lg hover:bg-sand"
             : variant === "hero"
-              ? "border-white/30 bg-black/10 text-white backdrop-blur-md hover:bg-white/15"
+              ? "border-white/30 bg-black/20 text-white hover:bg-white/15"
               : "border-line bg-surface text-moss hover:bg-sand",
         )}
       >

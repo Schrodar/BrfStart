@@ -18,7 +18,7 @@ export function NewsFeature({
   const date = post.publishedAt ?? post.createdAt;
 
   return (
-    <article className="news-card group relative grid overflow-hidden rounded-xl border border-line/70 bg-surface has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-moss/40 md:grid-cols-[5fr_7fr]">
+    <article className="card-lift group relative grid overflow-hidden rounded-card border border-border bg-surface shadow-[var(--card-shadow)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-moss/40 md:grid-cols-[5fr_7fr]">
       <NewsImage
         src={post.imageUrl}
         sizes="(min-width: 768px) 440px, 100vw"
@@ -53,7 +53,7 @@ export function NewsFeature({
           aria-hidden="true"
           className="mt-7 inline-flex items-center gap-2 font-body text-sm font-medium text-moss"
         >
-          Läs mer <span className="news-card-arrow">→</span>
+          Läs mer <span className="card-lift-arrow">→</span>
         </span>
       </div>
     </article>

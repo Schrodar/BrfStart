@@ -21,18 +21,18 @@ export function KeyFiguresCard({
     <Card>
       <CardBody>
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="font-semibold">Nyckeltal</h2>
+          <h2 className="title-card">Nyckeltal</h2>
           {fiscalYear ? (
             <p className="text-sm text-muted">Räkenskapsåret {fiscalYear}</p>
           ) : null}
         </div>
 
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        <dl className="mt-6 grid gap-4 sm:grid-cols-2">
           {figures.map(({ figure, number, unit }) => (
-            <div key={figure.id} className="rounded-lg bg-background px-4 py-3">
+            <div key={figure.id} className="rounded-lg border border-border/70 bg-background/70 px-5 py-4">
               <dt className="text-sm font-medium text-muted">{figure.title}</dt>
               <dd className="mt-1">
-                <span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+                <span className="font-display text-3xl font-light tracking-tight text-ink tabular-nums">
                   {number}
                 </span>{" "}
                 <span className="text-sm text-muted">{unit}</span>
@@ -44,7 +44,7 @@ export function KeyFiguresCard({
           ))}
         </dl>
 
-        <p className="mt-4 text-xs text-muted">
+        <p className="mt-5 text-xs text-muted">
           Uträknade enligt årsredovisningslagens definitioner, på samma sätt som
           i årsredovisningen.
         </p>
@@ -67,15 +67,15 @@ export function KeyFiguresSummary({
   if (figures.length === 0) return null;
 
   return (
-    <div className="rounded-card border border-border bg-surface p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+    <div className="rounded-card border border-border bg-surface p-6 shadow-[var(--card-shadow)]">
+      <h2 className="eyebrow">
         Nyckeltal{fiscalYear ? ` ${fiscalYear}` : ""}
       </h2>
-      <dl className="mt-4 space-y-3">
+      <dl className="mt-5 space-y-4">
         {figures.map(({ figure, number, unit }) => (
           <div key={figure.id}>
             <dt className="text-xs text-muted">{figure.title}</dt>
-            <dd className="text-sm font-medium text-foreground tabular-nums">
+            <dd className="mt-0.5 font-display text-lg text-ink tabular-nums">
               {number} {unit}
             </dd>
           </div>
@@ -83,9 +83,9 @@ export function KeyFiguresSummary({
       </dl>
       <Link
         href="/ekonomi"
-        className="mt-4 inline-block text-sm font-medium text-brand-700 hover:underline"
+        className="link-more mt-5"
       >
-        Mer om föreningens ekonomi →
+        Mer om föreningens ekonomi <span aria-hidden="true" className="arrow">→</span>
       </Link>
     </div>
   );

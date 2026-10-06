@@ -59,7 +59,7 @@ export default async function RootLayout({
 
   return (
     <html lang="sv" className={`${fraunces.variable} ${manrope.variable}`}>
-      <body className="flex min-h-screen flex-col">
+      <body className="theme-site flex min-h-screen flex-col">
         {/*
           SiteHeader är inte sticky längre.
           På startsidan är den en helskärmshero. På övriga sidor är den en

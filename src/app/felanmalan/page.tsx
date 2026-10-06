@@ -4,7 +4,7 @@ import {
   getMaintenanceCategories,
   getMaintenanceSettings,
 } from "@/lib/data/maintenance";
-import { Card, CardBody, Container, PageHeader, Section } from "@/components/ui";
+import { Card, CardBody, Container, PageIntro, Section } from "@/components/ui";
 import { MaintenanceForm } from "./maintenance-form";
 
 export const metadata: Metadata = {
@@ -23,16 +23,17 @@ export default async function MaintenancePage() {
   return (
     <Section>
       <Container className="max-w-3xl">
-        <PageHeader
+        <PageIntro
+          eyebrow="För boende"
           title="Felanmälan"
           description="Anmäl fel i fastigheten eller de gemensamma utrymmena till styrelsen."
         />
 
         {/* Ansvarsgränsen först – den avgör om besökaren ska anmäla här alls. */}
         {settings.introText ? (
-          <Card className="mt-6">
-            <CardBody className="py-4">
-              <p className="text-sm text-foreground">{settings.introText}</p>
+          <Card className="mt-12">
+            <CardBody className="py-5">
+              <p className="text-sm leading-relaxed text-foreground">{settings.introText}</p>
             </CardBody>
           </Card>
         ) : null}
@@ -67,7 +68,7 @@ export default async function MaintenancePage() {
                 {settings.caretakerName ? ` – ${settings.caretakerName}` : null}:{" "}
                 <PhoneLink
                   phone={settings.caretakerPhone}
-                  className="font-medium text-brand-700 underline"
+                  className="link-inline font-medium"
                 />
               </p>
               {settings.caretakerText ? (
@@ -77,7 +78,7 @@ export default async function MaintenancePage() {
           </Card>
         ) : null}
 
-        <div className="mt-8">
+        <div className="mt-10">
           {categories.length === 0 ? (
             <Card>
               <CardBody className="py-8 text-center text-sm text-muted">

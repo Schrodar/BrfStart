@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getAssociationInfo } from "@/lib/data";
-import { Card, CardBody, Container, PageHeader, Section } from "@/components/ui";
+import { Card, CardBody, Container, PageIntro, Section } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Fastigheten",
@@ -32,12 +32,13 @@ export default async function FastighetenPage() {
   return (
     <Section>
       <Container>
-        <PageHeader
+        <PageIntro
+          eyebrow="Om föreningen"
           title="Fastigheten"
           description="Om huset, gemensamma utrymmen och vad som ingår i boendet."
         />
 
-        <div className="mt-8 max-w-2xl space-y-6">
+        <div className="mt-12 max-w-2xl space-y-8">
           {facts.length === 0 ? (
             <Card>
               <CardBody className="py-6 text-sm text-muted">
@@ -69,11 +70,11 @@ export default async function FastighetenPage() {
           {info.renovationsDone.length > 0 ? (
             <Card>
               <CardBody>
-                <h2 className="font-semibold">Genomförda renoveringar</h2>
+                <h2 className="title-card">Genomförda renoveringar</h2>
                 <ul className="mt-3 space-y-1.5 text-sm text-foreground">
                   {info.renovationsDone.map((item) => (
                     <li key={item} className="flex gap-2">
-                      <span className="text-brand-600">✓</span>
+                      <span className="text-moss">✓</span>
                       {item}
                     </li>
                   ))}

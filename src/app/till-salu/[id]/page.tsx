@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function Fact({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
-    <div className="flex justify-between gap-4 border-b border-border py-2 text-sm last:border-0">
+    <div className="flex justify-between gap-4 border-b border-border py-3 text-sm last:border-0">
       <dt className="text-muted">{label}</dt>
       <dd className="font-medium text-foreground">{value}</dd>
     </div>
@@ -53,35 +53,36 @@ export default async function ListingPage({ params }: Props) {
       <Container className="max-w-4xl">
         <Link
           href="/till-salu"
-          className="text-sm font-medium text-brand-700 hover:underline"
+          className="group inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-moss"
         >
-          ← Alla lägenheter till salu
+          <span aria-hidden="true" className="transition-transform duration-300 group-hover:-translate-x-1">←</span>
+          Alla lägenheter till salu
         </Link>
 
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+        <div className="mt-10 flex flex-wrap items-end justify-between gap-4">
+          <h1 className="title-page">
             Lägenhet {listing.number}
           </h1>
           {listing.price ? (
             <div className="sm:text-right">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              <p className="eyebrow">
                 Utropspris
               </p>
-              <p className="text-2xl font-bold text-brand-700">{listing.price}</p>
+              <p className="mt-2 font-display text-3xl font-light text-moss">{listing.price}</p>
             </div>
           ) : null}
         </div>
         {/* Priset skrivs in för hand och följer inte budgivningen. */}
         {listing.price ? (
-          <p className="mt-1 text-xs text-muted sm:text-right">
+          <p className="mt-2 text-xs text-muted sm:text-right">
             Priset uppdateras inte under budgivningen – aktuellt bud får du av
             mäklaren.
           </p>
         ) : null}
 
         {/* Galleri */}
-        <div className="mt-6 space-y-3">
-          <div className="relative aspect-video overflow-hidden rounded-card bg-black/5">
+        <div className="mt-10 space-y-4">
+          <div className="relative aspect-video overflow-hidden rounded-card bg-sand/60">
             {cover ? (
               <Image
                 src={cover.url}
@@ -98,11 +99,11 @@ export default async function ListingPage({ params }: Props) {
             )}
           </div>
           {rest.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4">
               {rest.map((photo) => (
                 <div
                   key={photo.id}
-                  className="relative aspect-[4/3] overflow-hidden rounded-lg bg-black/5"
+                  className="relative aspect-[4/3] overflow-hidden rounded-card bg-sand/60"
                 >
                   <Image
                     src={photo.url}
@@ -117,12 +118,12 @@ export default async function ListingPage({ params }: Props) {
           ) : null}
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-3">
+        <div className="mt-14 grid gap-12 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             {listing.saleDescription ? (
               <div>
-                <h2 className="text-lg font-semibold">Om lägenheten</h2>
-                <Prose className="mt-2" content={listing.saleDescription} />
+                <h2 className="title-section">Om lägenheten</h2>
+                <Prose className="prose-editorial mt-5" content={listing.saleDescription} />
               </div>
             ) : null}
 
@@ -131,9 +132,9 @@ export default async function ListingPage({ params }: Props) {
                 href={listing.floorPlanUrl}
                 target="_blank"
                 rel="noopener"
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                className="group inline-flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-moss shadow-[var(--card-shadow)] transition-colors duration-200 hover:bg-sand/30"
               >
-                Visa planritning →
+                Visa planritning <span aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1">→</span>
               </a>
             ) : null}
           </div>
@@ -141,7 +142,7 @@ export default async function ListingPage({ params }: Props) {
           <aside className="space-y-6">
             <Card>
               <CardBody>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                <h2 className="eyebrow">
                   Fakta
                 </h2>
                 <dl className="mt-3">
@@ -159,7 +160,7 @@ export default async function ListingPage({ params }: Props) {
             {listing.viewingInfo ? (
               <Card>
                 <CardBody>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                  <h2 className="eyebrow">
                     Visning
                   </h2>
                   <p className="mt-2 text-sm text-foreground">
@@ -175,7 +176,7 @@ export default async function ListingPage({ params }: Props) {
             listing.hemnetUrl ? (
               <Card>
                 <CardBody>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                  <h2 className="eyebrow">
                     Mäklare
                   </h2>
                   <ul className="mt-2 space-y-1 text-sm">
@@ -191,7 +192,7 @@ export default async function ListingPage({ params }: Props) {
                       <li>
                         <a
                           href={`mailto:${listing.brokerEmail}`}
-                          className="text-brand-700 hover:underline"
+                          className="link-inline"
                         >
                           {listing.brokerEmail}
                         </a>
@@ -203,9 +204,9 @@ export default async function ListingPage({ params }: Props) {
                       href={listing.hemnetUrl}
                       target="_blank"
                       rel="noopener"
-                      className="mt-3 inline-block text-sm font-medium text-brand-700 hover:underline"
+                      className="link-more mt-4"
                     >
-                      Se annonsen på Hemnet →
+                      Se annonsen på Hemnet <span aria-hidden="true" className="arrow">→</span>
                     </a>
                   ) : null}
                 </CardBody>
@@ -214,7 +215,7 @@ export default async function ListingPage({ params }: Props) {
 
             <p className="text-xs text-muted">
               Frågor om föreningen? Se{" "}
-              <Link href="/for-maklare" className="text-brand-700 hover:underline">
+              <Link href="/for-maklare" className="link-inline">
                 föreningsfakta för köpare
               </Link>{" "}
               eller kontakta {shortNameOf(association)}.

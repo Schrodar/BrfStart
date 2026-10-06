@@ -9,7 +9,7 @@ import {
 } from "@/lib/data";
 import { publishedFigures } from "@/lib/key-figures";
 import { KeyFiguresSummary } from "@/components/key-figures";
-import { Container, PageHeader, Section } from "@/components/ui";
+import { Container, PageIntro, Section } from "@/components/ui";
 import { Prose } from "@/components/prose";
 
 export const metadata: Metadata = {
@@ -54,17 +54,18 @@ export default async function AboutPage() {
   return (
     <Section>
       <Container>
-        <PageHeader
+        <PageIntro
+          eyebrow="Föreningen"
           title="Om föreningen"
           description={[association.name, association.city]
             .filter(Boolean)
             .join(", ")}
         />
 
-        <div className="mt-8 grid gap-10 lg:grid-cols-3">
+        <div className="mt-12 grid gap-12 lg:grid-cols-3">
           <div className={hasAside ? "lg:col-span-2" : "lg:col-span-3"}>
             {content.aboutBody ? (
-              <Prose content={content.aboutBody} />
+              <Prose content={content.aboutBody} className="prose-editorial" />
             ) : (
               <p className="text-sm text-muted">
                 Styrelsen har inte skrivit någon presentation ännu.
@@ -75,15 +76,13 @@ export default async function AboutPage() {
           {hasAside ? (
             <aside className="space-y-6 lg:col-span-1">
               {facts.length > 0 ? (
-                <div className="rounded-card border border-border bg-surface p-5">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-                    Snabbfakta
-                  </h2>
-                  <dl className="mt-4 space-y-3">
+                <div className="rounded-card border border-border bg-surface p-6 shadow-[var(--card-shadow)]">
+                  <h2 className="eyebrow">Snabbfakta</h2>
+                  <dl className="mt-5 space-y-4">
                     {facts.map((fact) => (
                       <div key={fact.label}>
                         <dt className="text-xs text-muted">{fact.label}</dt>
-                        <dd className="text-sm font-medium text-foreground">
+                        <dd className="mt-0.5 text-sm font-medium text-foreground">
                           {fact.value}
                         </dd>
                       </div>
@@ -91,9 +90,9 @@ export default async function AboutPage() {
                   </dl>
                   <Link
                     href="/fastigheten"
-                    className="mt-4 inline-block text-sm font-medium text-brand-700 hover:underline"
+                    className="link-more mt-5"
                   >
-                    Fler fakta om fastigheten →
+                    Fler fakta om fastigheten <span aria-hidden="true" className="arrow">→</span>
                   </Link>
                 </div>
               ) : null}
@@ -104,17 +103,17 @@ export default async function AboutPage() {
 
         <nav
           aria-label="Mer om föreningen"
-          className="mt-10 border-t border-border pt-6"
+          className="mt-16 border-t border-border pt-8"
         >
-          <p className="text-sm font-semibold text-foreground">Läs mer</p>
-          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <p className="eyebrow">Läs mer</p>
+          <ul className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
             {READ_MORE.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="font-medium text-brand-700 hover:underline"
+                  className="link-more"
                 >
-                  {item.label} →
+                  {item.label} <span aria-hidden="true" className="arrow">→</span>
                 </Link>
               </li>
             ))}

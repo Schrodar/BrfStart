@@ -3,7 +3,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/siteConfig";
 import { EmailLink } from "@/components/association";
 import { getAssociationProfile } from "@/lib/data";
-import { Container, PageHeader, Section } from "@/components/ui";
+import { Container, PageIntro, Section } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Integritetspolicy",
@@ -15,9 +15,9 @@ export default async function PrivacyPage() {
   return (
     <Section>
       <Container className="max-w-3xl">
-        <PageHeader title="Integritetspolicy" />
+        <PageIntro eyebrow="Information" title="Integritetspolicy" />
 
-        <div className="prose mt-8 text-foreground">
+        <div className="prose prose-editorial mt-12 text-foreground">
           <p>
             {association.name}
             {association.organizationNumber

@@ -11,7 +11,7 @@ function DownloadIcon() {
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
-      className="shrink-0 text-brand-600"
+      className="shrink-0 text-moss transition-transform duration-300 group-hover:translate-y-0.5"
     >
       <path
         d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
@@ -39,7 +39,7 @@ export function DocumentList({
   }
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface">
+    <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-[var(--card-shadow)]">
       {documents.map((doc) => {
         const meta = [
           showCategory ? categoryLabel(doc.category) : null,
@@ -53,8 +53,8 @@ export function DocumentList({
           <>
             <DownloadIcon />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-foreground">{doc.title}</p>
-              <p className="text-xs text-muted">{meta}</p>
+              <p className="truncate font-medium text-foreground transition-colors duration-200 group-hover:text-moss">{doc.title}</p>
+              <p className="mt-0.5 text-xs text-muted">{meta}</p>
             </div>
             {showVisibility && doc.visibility === "member" ? (
               <Badge tone="brand">Endast medlemmar</Badge>
@@ -67,7 +67,7 @@ export function DocumentList({
             {doc.hasFile ? (
               <a
                 href={doc.fileUrl}
-                className="flex items-center gap-4 px-4 py-3.5 hover:bg-brand-50/60"
+                className="group flex items-center gap-4 px-5 py-4 transition-colors duration-200 hover:bg-sand/30"
                 target="_blank"
                 rel="noopener"
               >
@@ -75,7 +75,7 @@ export function DocumentList({
               </a>
             ) : (
               // Ingen uppladdad fil (demorad) – visa posten men inte som länk.
-              <div className="flex items-center gap-4 px-4 py-3.5 opacity-60">
+              <div className="flex items-center gap-4 px-5 py-4 opacity-60">
                 {body}
               </div>
             )}
@@ -100,17 +100,17 @@ export function GroupedDocumentList({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       {DOCUMENT_CATEGORIES.map((category) => {
         const inCategory = documents.filter((d) => d.category === category.value);
         if (inCategory.length === 0) return null;
         const headingId = `dokument-${category.value}`;
         return (
           <section key={category.value} aria-labelledby={headingId}>
-            <h2 id={headingId} className="text-xl font-bold tracking-tight">
+            <h2 id={headingId} className="title-card text-[1.375rem]">
               {category.heading}
             </h2>
-            <div className="mt-4">
+            <div className="mt-5">
               <DocumentList documents={inCategory} showCategory={false} />
             </div>
           </section>

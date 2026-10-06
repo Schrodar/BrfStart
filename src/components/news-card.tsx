@@ -11,7 +11,7 @@ export function NewsCard({ post }: { post: NewsPost }) {
   const date = post.publishedAt ?? post.createdAt;
 
   return (
-    <article className="news-card group relative flex h-full flex-col overflow-hidden rounded-xl border border-line/70 bg-surface has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-moss/40">
+    <article className="card-lift group relative flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface shadow-[var(--card-shadow)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-moss/40">
       <NewsImage
         src={post.imageUrl}
         sizes="(min-width: 768px) 340px, 100vw"
@@ -47,7 +47,7 @@ export function NewsCard({ post }: { post: NewsPost }) {
           aria-hidden="true"
           className="mt-5 inline-flex items-center gap-2 font-body text-sm font-medium text-moss"
         >
-          Läs mer <span className="news-card-arrow">→</span>
+          Läs mer <span className="card-lift-arrow">→</span>
         </span>
       </div>
     </article>

@@ -27,7 +27,7 @@ export default async function LoginPage({
   return (
     <Section>
       <Container className="max-w-md">
-        <h1 className="text-center text-2xl font-bold tracking-tight">
+        <h1 className="title-page text-center text-[2.5rem] sm:text-[3rem]">
           Logga in
         </h1>
         <p className="mt-2 text-center text-sm text-muted">

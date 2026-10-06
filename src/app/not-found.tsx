@@ -5,16 +5,16 @@ export default function NotFound() {
   return (
     <Section>
       <Container className="max-w-lg text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+        <p className="eyebrow">
           404
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">
+        <h1 className="title-page mt-4">
           Sidan hittades inte
         </h1>
-        <p className="mt-3 text-muted">
+        <p className="lead mt-5">
           Sidan du letar efter finns inte eller har flyttats.
         </p>
-        <Link href="/" className={`${buttonClasses("primary", "md")} mt-6`}>
+        <Link href="/" className={`${buttonClasses("primary", "md")} mt-8`}>
           Till startsidan
         </Link>
       </Container>

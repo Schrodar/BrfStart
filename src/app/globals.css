@@ -64,6 +64,169 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* =============================================================================
+   DESIGNSPRÅK – publik sajt mot adminpanel
+   =============================================================================
+   Komponenterna (Card, EmptyState, Field, Badge …) delas av den publika sajten
+   och adminpanelen. De läser sina färger, kanter, skuggor och typsnitt ur
+   variabler, och variablerna sätts per område:
+
+     .theme-site  (på <body>)  – varm benvit bas, varma kanter, mjuka skuggor,
+                                 Manrope som brödtext.
+     .theme-admin (adminlayouten) – återställer adminpanelens neutrala värden,
+                                 så att admin ser ut precis som förut.
+
+   Ändra den publika paletten här – inte på varje sida. */
+:root {
+  --button-radius: 0.5rem;
+  --card-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --card-shadow-hover:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.theme-site {
+  --color-background: #f5f1ea; /* varm benvit sidbakgrund */
+  --color-surface: #fffdf9; /* varmvit yta för kort och paneler */
+  --color-foreground: #292b27;
+  --color-muted: #6b675f; /* varmgrå sekundärtext */
+  --color-border: #e7e0d4; /* varm, lätt kantlinje i stället för grå */
+  --card-shadow:
+    0 1px 2px rgb(41 43 39 / 0.04),
+    0 12px 32px -20px rgb(41 43 39 / 0.16);
+  --card-shadow-hover:
+    0 2px 4px rgb(41 43 39 / 0.05),
+    0 22px 44px -22px rgb(41 43 39 / 0.24);
+  --button-radius: 9999px; /* rundade knappar, som i heron */
+  font-family: var(--font-manrope), var(--font-sans);
+}
+
+.theme-admin {
+  --button-radius: 0.5rem;
+  --color-background: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-foreground: #1a1c1a;
+  --color-muted: #5c6360;
+  --color-border: #e4e6e2;
+  --card-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --card-shadow-hover:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Komponentklasser i lagret components, så att verktygsklasser (text-sm,
+   mt-4 …) fortfarande kan justera dem på enskilda element. */
+@layer components {
+  /* Typografi för den publika sajten. Rubriker i Fraunces, brödtext i Manrope,
+     och en tydlig trappa: ögonbrynsrad → sidrubrik → sektionsrubrik → kortrubrik. */
+  .eyebrow {
+    font-family: var(--font-manrope), var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-moss);
+  }
+  .title-page,
+  .title-section,
+  .title-card {
+    font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+    color: var(--color-ink);
+  }
+  .title-page {
+    font-size: clamp(2.5rem, 1.6rem + 3.6vw, 4.25rem);
+    font-weight: 300;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+  }
+  .title-section {
+    font-size: clamp(1.625rem, 1.3rem + 1.2vw, 2.125rem);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  .title-card {
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+  }
+  .lead {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: var(--color-muted);
+  }
+
+  /* Länkar: inline i löptext, och "Läs mer"-länkar med en pil som glider fram. */
+  .link-inline {
+    color: var(--color-moss);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--color-moss) 35%, transparent);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 200ms ease-out, color 200ms ease-out;
+  }
+  .link-inline:hover {
+    text-decoration-color: currentColor;
+  }
+  .link-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-moss);
+    transition: color 200ms ease-out;
+  }
+  .link-more:hover {
+    color: var(--color-ink);
+  }
+  .link-more .arrow,
+  .card-lift .card-lift-arrow {
+    transition: transform 300ms ease-out;
+  }
+  .link-more:hover .arrow,
+  .card-lift:hover .card-lift-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Kort som går att klicka på: lyfter lite, skuggan fördjupas och en bild i
+     kortet zoomar sakta. Samma rörelse överallt på sajten. */
+  .card-lift {
+    transition:
+      box-shadow 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      border-color 300ms ease-out;
+  }
+  .card-lift:hover,
+  .card-lift:focus-within {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-2px);
+  }
+  .card-lift .card-lift-image {
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .card-lift:hover .card-lift-image {
+    transform: scale(1.03);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift,
+    .card-lift:hover,
+    .card-lift:focus-within,
+    .card-lift:hover .card-lift-image,
+    .card-lift:hover .card-lift-arrow,
+    .link-more:hover .arrow {
+      transform: none;
+    }
+  }
+}
+
 /* Fokus-ring som följer profilfärgen – tillgänglighet. */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-brand-500);
@@ -130,45 +293,6 @@ body {
   color: var(--color-moss);
 }
 
-/* Nyhetskort: mjuka, låga skuggor och lugna övergångar. Kortet lyfter lite,
-   bilden zoomar sakta och pilen i "Läs mer" glider fram. */
-.news-card {
-  box-shadow:
-    0 1px 2px rgb(41 43 39 / 0.04),
-    0 12px 32px -18px rgb(41 43 39 / 0.18);
-  transition:
-    box-shadow 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-.news-card:hover,
-.news-card:focus-within {
-  box-shadow:
-    0 2px 4px rgb(41 43 39 / 0.05),
-    0 22px 44px -20px rgb(41 43 39 / 0.26);
-  transform: translateY(-2px);
-}
-.news-card .news-card-image {
-  transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-.news-card:hover .news-card-image {
-  transform: scale(1.03);
-}
-.news-card .news-card-arrow {
-  transition: transform 300ms ease-out;
-}
-.news-card:hover .news-card-arrow {
-  transform: translateX(4px);
-}
-@media (prefers-reduced-motion: reduce) {
-  .news-card,
-  .news-card:hover,
-  .news-card:focus-within,
-  .news-card:hover .news-card-image,
-  .news-card:hover .news-card-arrow {
-    transform: none;
-  }
-}
-
 /* Hero: mjuk fade-in (uppåt) av texten över videobakgrunden. */
 @keyframes heroFadeUp {
   from {
@@ -189,28 +313,45 @@ body {
   }
 }
 
-/* Hero: bakgrundsbilden tonar fram och "andas ut" – en långsam, enda zoom
-   från 1,06 till 1. Stillsam rörelse, ingen effekt; ingen loop. */
-@keyframes heroImageIn {
-  0% {
+/* Hero: bakgrundsbilden tonar fram och zoomar mycket långsamt ut, en gång.
+   Tona och zoom är två animationer, så att tonen är kort och zoomen lång, och
+   de startar först när bilden har laddat (klassen is-loaded sätts i headern) –
+   annars kan bilden dyka upp mitt i rörelsen. translate3d + will-change lägger
+   bilden i ett eget kompositlager, så att zoomen glider utan att hacka. */
+@keyframes heroImageFade {
+  from {
     opacity: 0;
-    transform: scale(1.06);
   }
-  12% {
+  to {
     opacity: 1;
   }
-  100% {
-    opacity: 1;
-    transform: scale(1);
+}
+@keyframes heroImageZoom {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 .hero-image {
-  animation: heroImageIn 14s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(1.05);
   transform-origin: 60% 40%;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.hero-image.is-loaded {
+  animation:
+    heroImageFade 1.6s ease-out forwards,
+    heroImageZoom 20s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-image {
+  .hero-image,
+  .hero-image.is-loaded {
     animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 

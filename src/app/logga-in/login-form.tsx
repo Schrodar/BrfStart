@@ -51,7 +51,7 @@ export function LoginForm({ next }: { next: string | null }) {
 
       <p className="text-center text-sm text-muted">
         Har du inget konto?{" "}
-        <Link href="/registrera" className="text-brand-700 hover:underline">
+        <Link href="/registrera" className="link-inline">
           Registrera dig
         </Link>
       </p>

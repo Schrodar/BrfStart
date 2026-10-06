@@ -36,7 +36,7 @@ export default async function NewsArticlePage({ params }: Props) {
   const date = post.publishedAt ?? post.createdAt;
 
   return (
-    <article className="bg-bone pb-20 sm:pb-28">
+    <article className="pb-20 sm:pb-28">
       <Container className="max-w-3xl pt-12 sm:pt-16">
         <Link
           href="/nyheter"
@@ -68,7 +68,7 @@ export default async function NewsArticlePage({ params }: Props) {
 
       {post.imageUrl ? (
         <Container className="mt-12 max-w-5xl sm:mt-14">
-          <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-sand/60">
+          <div className="relative aspect-[16/9] overflow-hidden rounded-card bg-sand/60">
             <Image
               src={post.imageUrl}
               alt=""
@@ -82,7 +82,7 @@ export default async function NewsArticlePage({ params }: Props) {
       ) : null}
 
       <Container className="max-w-3xl">
-        <div className="mt-12 border-t border-line pt-10 sm:mt-14 sm:pt-12">
+        <div className="mt-12 border-t border-border pt-10 sm:mt-14 sm:pt-12">
           <Prose content={post.body} className="prose-editorial font-body text-ink" />
         </div>
       </Container>

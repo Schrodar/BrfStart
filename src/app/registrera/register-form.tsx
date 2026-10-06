@@ -33,7 +33,7 @@ export function RegisterForm() {
         <FormSuccess>{state.success}</FormSuccess>
         <Link
           href="/"
-          className="block text-center text-sm text-brand-700 hover:underline"
+          className="link-inline block text-center text-sm"
         >
           Till startsidan
         </Link>
@@ -85,7 +85,7 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted">
         Har du redan ett konto?{" "}
-        <Link href="/logga-in" className="text-brand-700 hover:underline">
+        <Link href="/logga-in" className="link-inline">
           Logga in
         </Link>
       </p>

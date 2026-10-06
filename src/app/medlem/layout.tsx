@@ -51,22 +51,22 @@ export default async function MemberLayout({
 
   return (
     <div className="border-b border-border bg-surface">
-      <Container className="pt-6">
-        <p className="text-xs font-medium uppercase tracking-wide text-brand-600">
+      <Container className="pt-10 sm:pt-12">
+        <p className="eyebrow">
           Medlemssidor
         </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight">
+        <h1 className="title-section mt-3">
           Hej {user.fullName.split(" ")[0]}!
         </h1>
         {approved ? (
-          <div className="mt-4 border-b border-border">
+          <div className="mt-6 border-b border-border">
             <SubNav items={memberNav} label="Medlemssidor" />
           </div>
         ) : null}
       </Container>
 
       <div className="bg-background">
-        <Container className="py-8">{children}</Container>
+        <Container className="py-10 sm:py-12">{children}</Container>
       </div>
     </div>
   );

@@ -34,7 +34,10 @@ export default async function AdminLayout({
   const support = await getSupportSession();
 
   return (
-    <div>
+    // theme-admin återställer adminpanelens neutrala färger, kanter, skuggor och
+    // typsnitt – den publika sajtens varma tema (theme-site på <body>) gäller
+    // inte här. Se DESIGNSPRÅK i globals.css.
+    <div className="theme-admin min-h-screen">
       {/* Supportläget ska aldrig vara osynligt: styrelsen ser bannern om de är
           inloggade samtidigt, och den som hjälper till ser när tiden går ut. */}
       {support ? (

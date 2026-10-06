@@ -4,7 +4,7 @@ import { siteConfig } from "@/config/siteConfig";
 import { EmailLink, EmergencyContact, PhoneLink } from "@/components/association";
 import { getAssociationProfile, getMaintenanceSettings } from "@/lib/data";
 import { hasPropertyManager, listText } from "@/lib/utils";
-import { Card, CardBody, Container, PageHeader, Section } from "@/components/ui";
+import { Card, CardBody, Container, PageIntro, Section } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Kontakt",
@@ -34,12 +34,12 @@ export default async function ContactPage() {
   return (
     <Section>
       <Container>
-        <PageHeader title="Kontakt" description={`Så här når du ${contacts}.`} />
+        <PageIntro eyebrow="För boende" title="Kontakt" description={`Så här når du ${contacts}.`} />
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="mt-12 grid gap-8 md:grid-cols-2">
           <Card>
             <CardBody>
-              <h2 className="text-lg font-semibold">Styrelsen</h2>
+              <h2 className="title-card">Styrelsen</h2>
               <p className="mt-2 text-sm text-muted">
                 Skriv till styrelsen via e-post, eller lämna en lapp i
                 föreningens brevlåda i entrén.
@@ -50,7 +50,7 @@ export default async function ContactPage() {
                     <span className="text-muted">E-post: </span>
                     <EmailLink
                       email={association.contactEmail}
-                      className="text-brand-700 hover:underline"
+                      className="link-inline"
                     />
                   </li>
                 ) : null}
@@ -59,7 +59,7 @@ export default async function ContactPage() {
                     <span className="text-muted">Telefon: </span>
                     <PhoneLink
                       phone={association.contactPhone}
-                      className="text-brand-700 hover:underline"
+                      className="link-inline"
                     />
                   </li>
                 ) : null}
@@ -74,7 +74,7 @@ export default async function ContactPage() {
                 Gäller det ett fel i fastigheten? Använd{" "}
                 <Link
                   href={siteConfig.links.faultReport}
-                  className="text-brand-700 hover:underline"
+                  className="link-inline"
                 >
                   felanmälan
                 </Link>
@@ -86,7 +86,7 @@ export default async function ContactPage() {
           {manager ? (
             <Card>
               <CardBody>
-                <h2 className="text-lg font-semibold">Förvaltare</h2>
+                <h2 className="title-card">Förvaltare</h2>
                 <p className="mt-2 text-sm text-muted">
                   Ekonomisk och teknisk förvaltning sköts av vår förvaltare.
                 </p>
@@ -101,7 +101,7 @@ export default async function ContactPage() {
                       <span className="text-muted">Telefon: </span>
                       <PhoneLink
                         phone={association.propertyManagerPhone}
-                        className="text-brand-700 hover:underline"
+                        className="link-inline"
                       />
                     </li>
                   ) : null}
@@ -110,7 +110,7 @@ export default async function ContactPage() {
                       <span className="text-muted">E-post: </span>
                       <EmailLink
                         email={association.propertyManagerEmail}
-                        className="text-brand-700 hover:underline"
+                        className="link-inline"
                       />
                     </li>
                   ) : null}
@@ -124,7 +124,7 @@ export default async function ContactPage() {
           {settings.emergencyPhone ? (
             <Card>
               <CardBody>
-                <h2 className="text-lg font-semibold">Jour vid akuta fel</h2>
+                <h2 className="title-card">Jour vid akuta fel</h2>
                 <EmergencyContact
                   phone={settings.emergencyPhone}
                   description={settings.emergencyText}
@@ -140,7 +140,7 @@ export default async function ContactPage() {
           {settings.caretakerPhone ? (
             <Card>
               <CardBody>
-                <h2 className="text-lg font-semibold">Fastighetsskötare</h2>
+                <h2 className="title-card">Fastighetsskötare</h2>
                 {settings.caretakerText ? (
                   <p className="mt-2 text-sm text-muted">
                     {settings.caretakerText}
@@ -156,7 +156,7 @@ export default async function ContactPage() {
                     <span className="text-muted">Telefon: </span>
                     <PhoneLink
                       phone={settings.caretakerPhone}
-                      className="text-brand-700 hover:underline"
+                      className="link-inline"
                     />
                   </li>
                 </ul>

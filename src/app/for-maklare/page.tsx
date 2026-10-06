@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getAssociationInfo, getAssociationProfile } from "@/lib/data";
 import { hasPropertyManager } from "@/lib/utils";
 import { EmailLink, PhoneLink } from "@/components/association";
-import { Card, CardBody, Container, PageHeader, Section } from "@/components/ui";
+import { Card, CardBody, Container, PageIntro, Section } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "För mäklare och köpare",
@@ -52,16 +52,17 @@ export default async function BrokerPage() {
   return (
     <Section>
       <Container>
-        <PageHeader
+        <PageIntro
+          eyebrow="Köpa bostad"
           title="För mäklare och köpare"
           description={`Här samlar vi den information mäklare och spekulanter oftast efterfrågar. För frågor om en specifik lägenhet, kontakta ${manager ? "föreningens förvaltare" : "styrelsen"}.`}
         />
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <div className="mt-12 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <Card>
               <CardBody>
-                <h2 className="text-lg font-semibold">Föreningsfakta</h2>
+                <h2 className="title-card">Föreningsfakta</h2>
                 {facts.length === 0 ? (
                   <p className="mt-2 text-sm text-muted">
                     Föreningen har inte fyllt i sina uppgifter ännu. Kontakta{" "}
@@ -82,11 +83,11 @@ export default async function BrokerPage() {
               {info.renovationsDone.length > 0 ? (
               <Card>
                 <CardBody>
-                  <h3 className="font-semibold">Genomförda renoveringar</h3>
+                  <h3 className="title-card">Genomförda renoveringar</h3>
                   <ul className="mt-3 space-y-1.5 text-sm text-foreground">
                     {info.renovationsDone.map((item) => (
                       <li key={item} className="flex gap-2">
-                        <span className="text-brand-600">✓</span>
+                        <span className="text-moss">✓</span>
                         {item}
                       </li>
                     ))}
@@ -97,11 +98,11 @@ export default async function BrokerPage() {
               {info.renovationsPlanned.length > 0 ? (
               <Card>
                 <CardBody>
-                  <h3 className="font-semibold">Planerat underhåll</h3>
+                  <h3 className="title-card">Planerat underhåll</h3>
                   <ul className="mt-3 space-y-1.5 text-sm text-foreground">
                     {info.renovationsPlanned.map((item) => (
                       <li key={item} className="flex gap-2">
-                        <span className="text-brand-600">→</span>
+                        <span className="text-moss">→</span>
                         {item}
                       </li>
                     ))}
@@ -116,7 +117,7 @@ export default async function BrokerPage() {
             {info.feesInfo || info.economySummary ? (
               <Card>
                 <CardBody>
-                  <h3 className="font-semibold">Avgift och ekonomi</h3>
+                  <h3 className="title-card">Avgift och ekonomi</h3>
                   {info.feesInfo ? (
                     <p className="mt-2 text-sm text-foreground">
                       {info.feesInfo}
@@ -134,7 +135,7 @@ export default async function BrokerPage() {
             {manager ? (
               <Card>
                 <CardBody>
-                  <h3 className="font-semibold">Förvaltare</h3>
+                  <h3 className="title-card">Förvaltare</h3>
                   {association.propertyManagerName ? (
                     <p className="mt-2 text-sm font-medium text-foreground">
                       {association.propertyManagerName}
@@ -150,7 +151,7 @@ export default async function BrokerPage() {
                       <li>
                         <EmailLink
                           email={association.propertyManagerEmail}
-                          className="text-brand-700 hover:underline"
+                          className="link-inline"
                         />
                       </li>
                     ) : null}

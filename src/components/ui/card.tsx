@@ -1,11 +1,15 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Yta för innehåll. Färg, kant och skugga kommer ur variabler – varma på den
+ * publika sajten och neutrala i admin (se DESIGNSPRÅK i globals.css).
+ */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "bg-surface border border-border rounded-card shadow-sm",
+        "bg-surface border border-border rounded-card shadow-[var(--card-shadow)]",
         className,
       )}
       {...props}

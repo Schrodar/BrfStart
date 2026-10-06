@@ -30,7 +30,7 @@ export default async function ActivatePage({
   return (
     <Section>
       <Container className="max-w-md">
-        <h1 className="text-center text-2xl font-bold tracking-tight">
+        <h1 className="title-page text-center text-[2.5rem] sm:text-[3rem]">
           Aktivera ditt konto
         </h1>
 

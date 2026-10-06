@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * Nyhetens bild, eller en lugn platshållare när bild saknas: varm sandton med
  * en tunn linjeteckning av ett hus. Bilden är dekorativ (alt="") – rubriken
- * står alltid bredvid. Inom ett .news-card zoomar den sakta vid hover.
+ * står alltid bredvid. Inom ett .card-lift zoomar den sakta vid hover.
  */
 export function NewsImage({
   src,
@@ -26,12 +26,12 @@ export function NewsImage({
           fill
           sizes={sizes}
           priority={priority}
-          className="news-card-image object-cover"
+          className="card-lift-image object-cover"
         />
       ) : (
         <div
           aria-hidden="true"
-          className="news-card-image absolute inset-0 flex items-center justify-center bg-gradient-to-br from-bone to-sand"
+          className="card-lift-image absolute inset-0 flex items-center justify-center bg-gradient-to-br from-bone to-sand"
         >
           <svg
             viewBox="0 0 64 64"

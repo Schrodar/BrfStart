@@ -3,6 +3,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { TransitionLink } from "@/components/page-transition/TransitionLink";
 import { NavDrawer } from "@/components/layout/nav-drawer";
@@ -33,11 +34,11 @@ export function SiteHeader({
 
   if (!isHome) {
     return (
-      <header className="relative z-40 border-b border-border bg-surface">
-        <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <TransitionLink href="/" className="flex items-center gap-2.5">
-            <AssociationLogo size={36} priority alt="" />
-            <span className="font-display text-lg font-medium text-foreground">
+      <header className="relative z-40 border-b border-border bg-background">
+        <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:h-24 sm:px-6">
+          <TransitionLink href="/" className="flex items-center gap-3">
+            <AssociationLogo size={38} priority alt="" />
+            <span className="font-display text-lg font-normal tracking-tight text-ink sm:text-xl">
               {shortName}
             </span>
           </TransitionLink>
@@ -69,16 +70,7 @@ export function SiteHeader({
           preload="auto"
         />
       ) : hero.image ? (
-        <div aria-hidden="true" className="hero-image absolute inset-0">
-          <Image
-            src={hero.image}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-        </div>
+        <HeroImage src={hero.image} />
       ) : null}
       {/* Toning för läsbarhet i föreningens färg (.hero-scrim i globals.css). */}
       <div aria-hidden="true" className="hero-scrim absolute inset-0" />
@@ -142,7 +134,7 @@ export function SiteHeader({
 
             <TransitionLink
               href="/felanmalan"
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 bg-white/5 px-5 py-3 font-body text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15 focus-visible:outline-white"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/40 bg-white/10 px-5 py-3 font-body text-sm font-semibold text-white transition-colors duration-300 hover:bg-white/20 focus-visible:outline-white"
             >
               Gör en felanmälan
             </TransitionLink>
@@ -156,7 +148,7 @@ export function SiteHeader({
         className={cn(
           "absolute bottom-5 left-1/2 z-20 -translate-x-1/2",
           "inline-flex h-11 w-11 items-center justify-center rounded-full",
-          "border border-white/25 bg-black/10 text-white/80 backdrop-blur-sm",
+          "border border-white/30 bg-black/15 text-white/80",
           "transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-white",
         )}
       >
@@ -175,5 +167,40 @@ export function SiteHeader({
         </svg>
       </a>
     </header>
+  );
+}
+
+/**
+ * Bakgrundsbilden i heron. Zoomen (.hero-image i globals.css) startar först
+ * när bilden har laddat, så att den inte dyker upp mitt i rörelsen.
+ *
+ * Bilden har ofta laddat redan innan React tagit över sidan – då kommer ingen
+ * load-händelse, så det kontrolleras när komponenten monteras. Skulle allt
+ * annat utebli startar zoomen ändå efter en kort stund.
+ */
+function HeroImage({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0) setLoaded(true);
+    const fallback = window.setTimeout(() => setLoaded(true), 2500);
+    return () => window.clearTimeout(fallback);
+  }, []);
+
+  return (
+    <div aria-hidden="true" className={cn("hero-image absolute inset-0", loaded && "is-loaded")}>
+      <Image
+        ref={imgRef}
+        src={src}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
   );
 }

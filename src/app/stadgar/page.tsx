@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicDocuments } from "@/lib/data";
 import { DOCUMENT_PAGES } from "@/lib/document-pages";
-import { Container, PageHeader, Section } from "@/components/ui";
+import { Container, PageIntro, Section } from "@/components/ui";
 import { GroupedDocumentList } from "@/components/document-list";
 
 export const metadata: Metadata = {
@@ -23,18 +23,19 @@ export default async function StadgarPage() {
   return (
     <Section>
       <Container>
-        <PageHeader
+        <PageIntro
+          eyebrow="Om föreningen"
           title="Stadgar och ordningsregler"
           description="Reglerna som gäller i föreningen – vad stadgarna säger och vad som gäller i vardagen."
         />
 
-        <div className="mt-8">
+        <div className="mt-12">
           <GroupedDocumentList documents={documents} />
         </div>
 
         <p className="mt-6 text-sm text-muted">
           Föreningens övriga dokument finns under{" "}
-          <Link href="/dokument" className="text-brand-700 hover:underline">
+          <Link href="/dokument" className="link-inline">
             Dokument
           </Link>
           .

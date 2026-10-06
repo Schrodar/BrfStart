@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicDocuments } from "@/lib/data";
 import { DOCUMENT_PAGES } from "@/lib/document-pages";
-import { Container, PageHeader, Section } from "@/components/ui";
+import { Container, PageIntro, Section } from "@/components/ui";
 import { DocumentList } from "@/components/document-list";
 
 export const metadata: Metadata = {
@@ -43,18 +43,19 @@ export default async function ArsredovisningarPage() {
   return (
     <Section>
       <Container>
-        <PageHeader
+        <PageIntro
+          eyebrow="Om föreningen"
           title="Årsredovisningar"
           description="Föreningens årsredovisningar samlade på ett ställe. Här ser mäklare och spekulanter föreningens ekonomi över tid."
         />
 
-        <div className="mt-8">
+        <div className="mt-12">
           <DocumentList documents={documents} showCategory={false} />
         </div>
 
         <p className="mt-6 text-sm text-muted">
           Sammanfattning av ekonomin finns under{" "}
-          <Link href="/ekonomi" className="text-brand-700 hover:underline">
+          <Link href="/ekonomi" className="link-inline">
             Föreningens ekonomi
           </Link>
           .

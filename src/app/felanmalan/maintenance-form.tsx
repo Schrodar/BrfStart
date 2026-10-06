@@ -66,7 +66,7 @@ export function MaintenanceForm({
             Ärendet syns under{" "}
             <Link
               href="/medlem/felanmalningar"
-              className="font-medium text-brand-700 hover:underline"
+              className="link-inline font-medium"
             >
               Mina sidor → Felanmälningar
             </Link>
