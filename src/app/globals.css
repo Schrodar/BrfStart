@@ -122,6 +122,51 @@ body {
   }
 }
 
+/* Hero: bakgrundsbilden tonar fram och "andas ut" – en långsam, enda zoom
+   från 1,06 till 1. Stillsam rörelse, ingen effekt; ingen loop. */
+@keyframes heroImageIn {
+  0% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.hero-image {
+  animation: heroImageIn 14s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  transform-origin: 60% 40%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-image {
+    animation: none;
+  }
+}
+
+/* Hero: toning i föreningens egen färg i stället för svart, så att bildens
+   ljus får vara kvar i mitten. Djup nedtill där texten ligger, lätt upptill
+   för menyraden och en svag slöja över allt som binder ihop tonerna. Följer
+   --color-brand-900, så en förening med egen profilfärg får sin egen ton. */
+.hero-scrim {
+  background:
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--color-brand-900) 80%, transparent) 0%,
+      color-mix(in srgb, var(--color-brand-900) 45%, transparent) 38%,
+      transparent 72%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-brand-900) 45%, transparent) 0%,
+      transparent 26%
+    ),
+    color-mix(in srgb, var(--color-brand-900) 14%, transparent);
+}
+
 /* Undermeny (SubNav): när ett avsnitt med undersidor öppnas glider flikarna
    in en i taget (fördröjningen sätts per flik), och markeringen tonar fram.
    Markeringen animerar bara opacitet – dess transform styr positionen. */

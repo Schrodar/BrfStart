@@ -2,6 +2,7 @@
 
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { TransitionLink } from "@/components/page-transition/TransitionLink";
 import { NavDrawer } from "@/components/layout/nav-drawer";
@@ -28,6 +29,7 @@ export function SiteHeader({
   const { signedIn, member } = useCurrentMember();
   const isHome = pathname === "/";
   const shortName = shortNameOf(association);
+  const { hero } = siteConfig;
 
   if (!isHome) {
     return (
@@ -52,25 +54,34 @@ export function SiteHeader({
 
   return (
     <header className="relative isolate flex min-h-svh overflow-hidden bg-brand-800 text-white">
-      {/* Videobakgrund (helskärm). brand-800 på headern syns tills videon
-          laddat – och hela tiden när ingen film är angiven. */}
-      {siteConfig.hero.video ? (
+      {/* Bakgrund (helskärm), vald i siteConfig.hero: film före bild. brand-800
+          på headern syns tills den laddat – och hela tiden när ingen är vald. */}
+      {hero.video ? (
         <video
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover"
-          src={siteConfig.hero.video}
+          src={hero.video}
+          poster={hero.image}
           autoPlay
           muted
           loop
           playsInline
           preload="auto"
         />
+      ) : hero.image ? (
+        <div aria-hidden="true" className="hero-image absolute inset-0">
+          <Image
+            src={hero.image}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
       ) : null}
-      {/* Mörk scrim för läsbarhet – tyngre nedtill där texten ligger. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-black/25"
-      />
+      {/* Toning för läsbarhet i föreningens färg (.hero-scrim i globals.css). */}
+      <div aria-hidden="true" className="hero-scrim absolute inset-0" />
 
       {/* Övre navigeringsrad ovanpå heron. Inte sticky. */}
       <div className="absolute inset-x-0 top-0 z-20">

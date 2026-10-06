@@ -141,10 +141,27 @@ npm run admin:invite -- <slug> <admin-epost> <sajtens-adress>  # bjud in styrels
 2. **Färger & typsnitt:** [`src/app/globals.css`](src/app/globals.css) – byt
    `--color-brand-*` till föreningens profilfärg.
 3. **Logotyp:** ersätt logotyperna i `public/images/` (se `siteConfig.logo`).
-   Hero-filmen på startsidan ligger inte i repot – lägg föreningens egen film i
-   `public/videos/` och peka ut den med `NEXT_PUBLIC_HERO_VIDEO`. Utan film
-   visar heron sin mörka bakgrund.
-4. **Startinnehåll:** ändra innehållet direkt i adminpanelen, eller redigera
+4. **Bakgrund i heron:** välj i `hero` överst i
+   [`src/config/siteConfig.ts`](src/config/siteConfig.ts) genom att kommentera
+   ut raden du inte vill använda:
+   ```ts
+   const hero: HeroBackground = {
+     video: process.env.NEXT_PUBLIC_HERO_VIDEO, // film – går före bilden
+     image: "/images/hero.webp",                 // bild – när ingen film används
+   };
+   ```
+   Båda bortkommenterade ger den gröna bakgrunden (`brand-800`), som är
+   grundsidans standard. Bilden läggs i `public/images/`. Filmen ligger inte i
+   repot: lägg den i `public/videos/` eller på en CDN och peka ut den med
+   `NEXT_PUBLIC_HERO_VIDEO` i deployens env (läses vid bygget). Bilden tonar
+   fram med en långsam zoom, och toningen över bild och film följer
+   `--color-brand-900`.
+
+> **Sajtspecifikt – skriv inte över vid synk från BrfStart:** i kopiorna
+> (brfdosa, brfpep) skiljer sig `README.md` (rubriken), `package.json` (namn,
+> inga db-skript), `prisma/schema.prisma` (varningen), `src/config/siteConfig.ts`
+> (heron) och `public/images/hero.webp`. För över allt annat som det är.
+5. **Startinnehåll:** ändra innehållet direkt i adminpanelen, eller redigera
    seed-datan i [`prisma/seed.ts`](prisma/seed.ts) och kör om `npm run db:seed`.
 
 ## Projektstruktur
@@ -160,7 +177,7 @@ src/
   components/
     ui/                  Återanvändbart UI-kit (Button, Card, Field, …)
     layout/              Sidhuvud, sidfot, delnavigation
-  config/siteConfig.ts   Logotyp, sajtadress     config/site.ts  Navigation
+  config/siteConfig.ts   Logotyp, hero, adress   config/site.ts  Navigation
   proxy.ts               Refreshar Supabase-sessionen på varje request
   lib/
     prisma.ts            Prisma-klient (singleton)
