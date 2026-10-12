@@ -1,0 +1,2 @@
+# Skal-skript körs på Linux (Raspberry Pi) – CRLF får dem att fallera.
+*.sh text eol=lf

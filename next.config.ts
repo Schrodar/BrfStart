@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    // Stämpel per bygge. Trapphustavlan jämför sin egen med serverns och
+    // laddar om sig efter en ny deploy (src/lib/board.ts).
+    NEXT_PUBLIC_BUILD_STAMP: String(Date.now()),
+  },
+  // Dev-servern svarar bara localhost. En testskärm i en virtuell maskin eller
+  // på en annan dator når den via datorns IP – lägg till den här, t.ex.
+  // DEV_ALLOWED_ORIGINS=192.168.1.10 i .env.local. Påverkar inte produktion.
+  allowedDevOrigins: (process.env.DEV_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
   experimental: {
     serverActions: {
       // Uppladdningar (foton, planritningar, dokument, nyhetsbilder) går via

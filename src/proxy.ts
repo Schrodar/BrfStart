@@ -25,5 +25,6 @@ export const config = {
     "/felanmalan",
     "/api/me",
     "/dokument/:id/ladda-ner",
+    "/tavla/forhandsvisning",
   ],
 };

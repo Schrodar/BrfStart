@@ -108,6 +108,9 @@ model Association {
   platformAccount       PlatformAccount?
   supportSessions       SupportSession[]
   invitations           MemberInvitation[]
+  displays              Display[]
+  notices               Notice[]
+  displaySettings       DisplaySettings?
 }
 
 // ---------------------------------------------------------------------------
@@ -554,6 +557,8 @@ model Building {
   numberTopDown Boolean @default(false)
 
   apartments Apartment[]
+  displays   Display[]
+  notices    Notice[]
 
   @@unique([associationId, name])
   @@index([associationId, sortOrder])
@@ -628,4 +633,68 @@ model ApartmentPhoto {
   sortOrder   Int       @default(0)
 
   @@index([apartmentId, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
+// Trapphustavlor – informationsskärmar i trapphusen
+// ---------------------------------------------------------------------------
+
+/// En skärm i ett trapphus. Skärmen visar /tavla/<token> i en låst webbläsare
+/// och hämtar sitt innehåll från /api/tavla. Bara tokenens sha256 sparas –
+/// adressen visas en gång när skärmen skapas (eller får ny token).
+model Display {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  name       String
+  /// Huset skärmen sitter i. Styr husets adress och vilka anslag som visas.
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+
+  tokenHash  String    @unique
+  revokedAt  DateTime?
+  /// Senaste hämtningen. Uppdateras högst var femte minut.
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([associationId])
+}
+
+/// Ett anslag på trapphustavlorna. Visas från startsAt till endsAt (tomt =
+/// tills vidare), i alla hus eller bara i ett.
+model Notice {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  title      String
+  body       String
+  /// Bild i news-images-bucketen (publik), under prefixet <associationId>/anslag.
+  imagePath  String?
+  startsAt   DateTime  @default(now())
+  endsAt     DateTime?
+  /// Tomt = alla hus.
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  /// Fästa anslag visas först.
+  pinned     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([associationId, startsAt])
+}
+
+/// Gemensamma inställningar för föreningens tavlor. Saknas raden gäller
+/// standardvärdena.
+model DisplaySettings {
+  id            String      @id @default(uuid())
+  associationId String      @unique
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Visa de senaste nyheterna från sajten under anslagen.
+  showNews   Boolean @default(true)
+  /// Svart skärm nattetid, "HH:MM". Lika värden = alltid på.
+  nightStart String  @default("23:00")
+  nightEnd   String  @default("06:00")
 }
