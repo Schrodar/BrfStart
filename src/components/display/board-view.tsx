@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { activeNotices, type BoardData, type BoardNotice } from "@/lib/board";
 import { cn } from "@/lib/utils";
 
@@ -30,16 +31,16 @@ const shortDateFmt = new Intl.DateTimeFormat("sv-SE", {
 });
 
 /**
- * Hur mycket som får plats på en sida. Ett anslag med bild tar ungefär dubbelt
- * så mycket plats. En liggande skärm har bara hälften så mycket höjd för dem.
+ * Grov sidindelning, när korten inte har mätts (första renderingen). Ett anslag
+ * med bild räknas som två. Skärmen mäter sedan korten och packar sidorna efter
+ * verklig höjd – se LiveBoard.
  */
-export const PAGE_CAPACITY = { portrait: 4, landscape: 2 } as const;
+const ROUGH_CAPACITY = 3;
 const weight = (n: BoardNotice) => (n.imageUrl ? 2 : 1);
 
-/** Delar anslagen i sidor som får plats på skärmen samtidigt. */
 export function noticePages(
   notices: BoardNotice[],
-  capacity: number = PAGE_CAPACITY.portrait,
+  capacity: number = ROUGH_CAPACITY,
 ): BoardNotice[][] {
   const pages: BoardNotice[][] = [];
   let current: BoardNotice[] = [];
@@ -61,18 +62,25 @@ export function BoardView({
   data,
   now,
   page = 0,
-  capacity = PAGE_CAPACITY.portrait,
+  pages: fittedPages,
+  areaRef,
+  measureRef,
   className,
 }: {
   data: BoardData;
   now: Date;
   /** Vilken sida av anslagen som visas, när de inte får plats på en. */
   page?: number;
-  /** Se PAGE_CAPACITY – skärmen väljer efter hur den står. */
-  capacity?: number;
+  /** Sidorna packade efter uppmätt höjd. Saknas de används en grov indelning. */
+  pages?: BoardNotice[][];
+  /** Ytan anslagen visas i – dess höjd är vad som får plats på en sida. */
+  areaRef?: Ref<HTMLDivElement>;
+  /** Osynlig kolumn med alla aktuella anslag, för att mäta deras höjd. */
+  measureRef?: Ref<HTMLDivElement>;
   className?: string;
 }) {
-  const pages = noticePages(activeNotices(data.notices, now), capacity);
+  const active = activeNotices(data.notices, now);
+  const pages = fittedPages && fittedPages.length > 0 ? fittedPages : noticePages(active);
   const current = pages.length > 0 ? pages[page % pages.length] : [];
   const address =
     data.building?.address ||
@@ -142,11 +150,27 @@ export function BoardView({
             // hellre nertill än att texten i alla blir oläslig.
             <div
               key={page}
-              className="board-fade mt-[1.4rem] flex min-h-0 flex-1 flex-col gap-[1.4rem] overflow-hidden"
+              ref={areaRef}
+              // Lite luft runt korten (som tas tillbaka med negativ marginal), så
+              // att deras skugga inte klipps i kanten.
+              className="board-fade relative -mx-[0.6rem] mt-[0.8rem] flex min-h-0 flex-1 flex-col gap-[1.4rem] overflow-hidden px-[0.6rem] pb-[0.8rem] pt-[0.6rem]"
             >
               {current.map((n) => (
                 <NoticeCard key={n.id} notice={n} />
               ))}
+              {measureRef ? (
+                <div
+                  ref={measureRef}
+                  aria-hidden
+                  className="pointer-events-none invisible absolute inset-x-[0.6rem] top-0 flex flex-col"
+                >
+                  {active.map((n) => (
+                    <div key={n.id} data-id={n.id}>
+                      <NoticeCard notice={n} />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           )}
         </main>
@@ -220,8 +244,10 @@ function NoticeCard({ notice }: { notice: BoardNotice }) {
   return (
     <article
       className={cn(
-        "flex shrink-0 gap-[1.6rem] overflow-hidden rounded-[1.2rem] bg-surface p-[1.8rem] shadow-[var(--card-shadow)]",
-        notice.pinned && "ring-[0.2rem] ring-moss",
+        // Ramen ritas innanför kortet (border, inte ring) – en ring hamnar utanför
+        // och klipps av anslagsytans overflow-hidden.
+        "flex shrink-0 gap-[1.6rem] overflow-hidden rounded-[1.2rem] border-[0.2rem] bg-surface p-[1.6rem] shadow-[var(--card-shadow)]",
+        notice.pinned ? "border-moss" : "border-transparent",
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col">
