@@ -53,7 +53,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="sv" className={`${fraunces.variable} ${manrope.variable}`}>
+    // suppressHydrationWarning: trapphustavlan sätter translate="no" på <html>
+    // med ett skript innan React tar över (se tavla/layout.tsx). Gäller bara
+    // attributen på själva <html>-taggen.
+    <html
+      lang="sv"
+      className={`${fraunces.variable} ${manrope.variable}`}
+      suppressHydrationWarning
+    >
       <body className="theme-site">{children}</body>
     </html>
   );

@@ -21,9 +21,6 @@ export async function GET(request: Request) {
     return new NextResponse("Hittades inte", { status: 404, headers: NO_STORE });
   }
 
-  // Sajtens adress tas från anropet: skärmen pratar alltid med föreningens
-  // egen deploy, och siteConfig.seo.siteUrl är inte alltid ifylld.
-  const origin = new URL(request.url).origin;
-  const data = await getBoardData(display.building, origin);
+  const data = await getBoardData(display.building);
   return NextResponse.json(data, { headers: NO_STORE });
 }

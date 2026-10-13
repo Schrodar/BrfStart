@@ -41,7 +41,6 @@ export interface BoardData {
   notices: BoardNotice[];
   news: BoardNews[];
   contacts: BoardContact[];
-  qr: { label: string; url: string; svg: string }[];
   night: { start: string; end: string };
 }
 

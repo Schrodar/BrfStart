@@ -1,5 +1,3 @@
-import QRCode from "qrcode";
-import { siteConfig } from "@/config/siteConfig";
 import { BOARD_BUILD, type BoardContact, type BoardData } from "@/lib/board";
 import { getAssociationProfile } from "./association";
 import { getDisplaySettings } from "./displays";
@@ -7,20 +5,12 @@ import { getMaintenanceSettings } from "./maintenance";
 import { getPublishedNews } from "./news";
 import { getNoticesForBuilding } from "./notices";
 
-async function qr(url: string): Promise<string> {
-  return QRCode.toString(url, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
-}
-
 /**
  * Allt en trapphustavla visar, för ett visst hus (null = föreningen i stort).
  * Används av /api/tavla och av förhandsvisningen i adminpanelen.
- *
- * `origin` är sajtens adress som skärmen själv når den på – den hamnar i
- * QR-koderna.
  */
 export async function getBoardData(
   building: { id: string; name: string; address: string } | null,
-  origin: string,
 ): Promise<BoardData> {
   const [association, settings, maintenance, notices, news] = await Promise.all([
     getAssociationProfile(),
@@ -64,8 +54,6 @@ export async function getBoardData(
     });
   }
 
-  const faultUrl = `${origin}${siteConfig.links.faultReport}`;
-
   return {
     build: BOARD_BUILD,
     generatedAt: new Date().toISOString(),
@@ -93,10 +81,6 @@ export async function getBoardData(
         }))
       : [],
     contacts,
-    qr: [
-      { label: "Felanmälan", url: faultUrl, svg: await qr(faultUrl) },
-      { label: "Föreningens webbplats", url: origin, svg: await qr(origin) },
-    ],
     night: { start: settings.nightStart, end: settings.nightEnd },
   };
 }

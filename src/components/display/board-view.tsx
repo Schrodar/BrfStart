@@ -88,53 +88,56 @@ export function BoardView({
 
   return (
     <div
-      // Inga översättningsförslag – se även metadata i tavla/layout.tsx.
+      // Inga översättningsförslag – se även tavla/layout.tsx.
       translate="no"
       className={cn(
-        "flex h-full w-full flex-col overflow-hidden bg-background text-foreground",
+        "flex h-full w-full flex-col overflow-hidden bg-bone text-ink",
         className,
       )}
     >
-      {/* Rubrik: förening, hus och klocka */}
-      <header className="flex items-end justify-between gap-8 bg-moss px-[3rem] pb-[2.2rem] pt-[2.6rem] text-bone">
+      {/*
+        Rubrik: förening, hus och klocka. Redaktionellt snarare än en färgad
+        list – mörkgrönt bara i etiketten och den tunna linjen under.
+      */}
+      <header className="mx-[4rem] flex items-end justify-between gap-[3rem] border-b border-moss/30 pb-[2.4rem] pt-[3.4rem]">
         <div className="min-w-0">
-          <p className="text-[1.05rem] font-semibold uppercase tracking-[0.2em] text-bone/70">
+          <p className="text-[0.95rem] font-semibold uppercase tracking-[0.24em] text-moss">
             {data.building?.name ?? "Välkommen"}
           </p>
-          <h1 className="font-display mt-[0.6rem] text-[3.2rem] leading-[1.05]">
+          <h1 className="font-display mt-[0.9rem] text-[3.6rem] leading-[1.02] tracking-[-0.01em]">
             {data.association.name}
           </h1>
-          {address ? <p className="mt-[0.6rem] text-[1.4rem] text-bone/80">{address}</p> : null}
+          {address ? (
+            <p className="mt-[0.8rem] text-[1.25rem] text-ink/60">{address}</p>
+          ) : null}
         </div>
         <div className="shrink-0 text-right">
-          <p className="font-display text-[4.6rem] leading-none tabular-nums">
+          <p className="font-display text-[4.4rem] leading-none tabular-nums">
             {timeFmt.format(now)}
           </p>
-          <p className="mt-[0.6rem] text-[1.3rem] text-bone/80 first-letter:uppercase">
+          <p className="mt-[0.8rem] text-[1.15rem] text-ink/60 first-letter:uppercase">
             {dateFmt.format(now)}
           </p>
         </div>
       </header>
 
       {/*
-        Stående skärm: allt i en kolumn – anslag, nyheter, kontakter.
-        Liggande skärm: anslagen till vänster, resten i en kolumn till höger,
-        så att anslagen får hela höjden.
+        Stående skärm: anslagen överst, nyheter och kontakt som två kort under.
+        Liggande skärm: anslagen till vänster, korten i en spalt till höger, så
+        att anslagen får hela höjden.
       */}
       <div className="flex min-h-0 flex-1 flex-col landscape:flex-row">
         {/* Anslag */}
-        <main className="flex min-h-0 flex-1 flex-col px-[3rem] pt-[2.4rem] landscape:pb-[2.4rem]">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.2em] text-moss">
-              Anslag
-            </h2>
+        <main className="flex min-h-0 flex-1 flex-col px-[4rem] pt-[2.8rem] landscape:pb-[3rem] landscape:pr-[2rem]">
+          <div className="flex items-center justify-between">
+            <SectionLabel>Anslag</SectionLabel>
             {pages.length > 1 ? (
-              <div className="flex gap-[0.5rem]" aria-hidden>
+              <div className="flex gap-[0.6rem]" aria-hidden>
                 {pages.map((_, i) => (
                   <span
                     key={i}
                     className={cn(
-                      "h-[0.6rem] w-[0.6rem] rounded-full transition-colors duration-700",
+                      "h-[0.5rem] w-[0.5rem] rounded-full transition-colors duration-700",
                       i === page % pages.length ? "bg-moss" : "bg-line",
                     )}
                   />
@@ -145,7 +148,9 @@ export function BoardView({
 
           {current.length === 0 ? (
             <div className="flex flex-1 items-center justify-center">
-              <p className="font-display text-[2rem] text-muted">Inga aktuella anslag just nu.</p>
+              <p className="font-display text-[1.9rem] italic text-ink/45">
+                Inga aktuella anslag just nu.
+              </p>
             </div>
           ) : (
             // Korten trycks aldrig ihop – får de inte plats klipps det sista
@@ -155,7 +160,7 @@ export function BoardView({
               ref={areaRef}
               // Lite luft runt korten (som tas tillbaka med negativ marginal), så
               // att deras skugga inte klipps i kanten.
-              className="board-fade relative -mx-[0.6rem] mt-[0.8rem] flex min-h-0 flex-1 flex-col gap-[1.4rem] overflow-hidden px-[0.6rem] pb-[0.8rem] pt-[0.6rem]"
+              className="board-fade relative -mx-[0.8rem] mt-[1rem] flex min-h-0 flex-1 flex-col gap-[1.8rem] overflow-hidden px-[0.8rem] pb-[1.2rem] pt-[0.8rem]"
             >
               {current.map((n) => (
                 <NoticeCard key={n.id} notice={n} />
@@ -164,7 +169,7 @@ export function BoardView({
                 <div
                   ref={measureRef}
                   aria-hidden
-                  className="pointer-events-none invisible absolute inset-x-[0.6rem] top-0 flex flex-col"
+                  className="pointer-events-none invisible absolute inset-x-[0.8rem] top-0 flex flex-col"
                 >
                   {active.map((n) => (
                     <div key={n.id} data-id={n.id}>
@@ -177,68 +182,75 @@ export function BoardView({
           )}
         </main>
 
-        <aside className="flex shrink-0 flex-col landscape:w-[34%] landscape:border-l landscape:border-line landscape:bg-bone">
+        {/* Nyheter och kontakt – lugna, separata kort */}
+        <aside className="flex shrink-0 gap-[1.8rem] px-[4rem] pb-[3rem] pt-[1.2rem] landscape:w-[33%] landscape:flex-col landscape:pl-[2rem] landscape:pt-[2.8rem]">
           {data.news.length > 0 ? (
-            <section className="mx-[3rem] mt-[1.6rem] border-t border-line pb-[1.6rem] pt-[1.4rem] landscape:mx-[2.4rem] landscape:mt-[2.4rem] landscape:border-t-0 landscape:pt-0">
-              <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.2em] text-moss">
-                Nytt på webbplatsen
-              </h2>
-              <ul className="mt-[0.9rem] grid grid-cols-2 gap-[1.6rem] landscape:grid-cols-1 landscape:gap-[1.2rem]">
+            <SideCard label="Nytt på webbplatsen">
+              <ul className="space-y-[1.4rem]">
                 {data.news.map((n) => (
                   <li key={n.id}>
-                    <p className="font-display text-[1.5rem] leading-snug">{n.title}</p>
-                    <p className="mt-[0.3rem] line-clamp-2 text-[1.1rem] text-muted">{n.excerpt}</p>
+                    <p className="font-display text-[1.45rem] leading-[1.25]">{n.title}</p>
+                    <p className="mt-[0.4rem] line-clamp-2 text-[1.02rem] leading-[1.6] text-ink/60">
+                      {n.excerpt}
+                    </p>
                   </li>
                 ))}
               </ul>
-            </section>
-          ) : (
-            <div className="h-[1.6rem] landscape:hidden" />
-          )}
+            </SideCard>
+          ) : null}
 
-          {/* Kontakter och QR-koder */}
-          <footer className="flex items-stretch gap-[2.4rem] border-t border-line bg-bone px-[3rem] py-[2rem] landscape:mt-auto landscape:flex-col landscape:gap-[1.6rem] landscape:px-[2.4rem]">
-            <dl className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-[2rem] gap-y-[1.2rem] landscape:flex-none landscape:grid-cols-1">
-              {data.contacts.map((c) => (
-                <div key={c.label} className="min-w-0">
-                  <dt className="text-[0.95rem] font-semibold uppercase tracking-[0.14em] text-moss">
-                    {c.label}
-                  </dt>
-                  <dd
-                    className={cn(
-                      "mt-[0.2rem] font-semibold tabular-nums leading-tight",
-                      // En e-postadress är för lång för telefonnumrets storlek.
-                      c.phone.includes("@") ? "break-all text-[1.15rem]" : "text-[1.6rem]",
-                    )}
-                  >
-                    {c.phone}
-                  </dd>
-                  {c.name || c.note ? (
-                    <dd className="mt-[0.15rem] line-clamp-2 text-[1rem] text-muted">
-                      {[c.name, c.note].filter(Boolean).join(" · ")}
+          {data.contacts.length > 0 ? (
+            <SideCard label="Kontakt">
+              <dl className="space-y-[1.2rem]">
+                {data.contacts.map((c) => (
+                  <div key={c.label} className="min-w-0">
+                    <dt className="text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-moss/80">
+                      {c.label}
+                    </dt>
+                    <dd
+                      className={cn(
+                        "mt-[0.25rem] tabular-nums leading-tight",
+                        // En e-postadress är för lång för telefonnumrets storlek.
+                        c.phone.includes("@")
+                          ? "break-words text-[1.1rem]"
+                          : "text-[1.45rem] font-medium",
+                      )}
+                    >
+                      {c.phone}
                     </dd>
-                  ) : null}
-                </div>
-              ))}
-            </dl>
-            <div className="flex shrink-0 gap-[1.6rem]">
-              {data.qr.map((q) => (
-                <figure key={q.label} className="flex w-[9rem] flex-col items-center">
-                  <div
-                    className="w-full rounded-[0.6rem] bg-white p-[0.6rem] [&>svg]:h-auto [&>svg]:w-full"
-                    // SVG:n genereras på servern av qrcode-paketet ur sajtens egen adress.
-                    dangerouslySetInnerHTML={{ __html: q.svg }}
-                  />
-                  <figcaption className="mt-[0.5rem] text-center text-[0.95rem] font-medium leading-tight">
-                    {q.label}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          </footer>
+                    {c.name || c.note ? (
+                      <dd className="mt-[0.2rem] line-clamp-2 text-[0.95rem] leading-[1.5] text-ink/55">
+                        {[c.name, c.note].filter(Boolean).join(" · ")}
+                      </dd>
+                    ) : null}
+                  </div>
+                ))}
+              </dl>
+            </SideCard>
+          ) : null}
         </aside>
       </div>
     </div>
+  );
+}
+
+/** Liten etikett med en kort linje framför – mörkgrönt i små doser. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-[0.9rem] text-[0.9rem] font-semibold uppercase tracking-[0.24em] text-moss">
+      <span className="h-px w-[2.2rem] bg-moss/50" aria-hidden />
+      {children}
+    </h2>
+  );
+}
+
+/** Kort i sidospalten: samma varma yta som anslagen, men lugnare. */
+function SideCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="min-w-0 flex-1 rounded-[1.4rem] border border-line/70 bg-[#faf7f1]/80 px-[1.9rem] pb-[1.9rem] pt-[1.6rem] landscape:flex-none">
+      <SectionLabel>{label}</SectionLabel>
+      <div className="mt-[1.3rem]">{children}</div>
+    </section>
   );
 }
 
@@ -246,31 +258,36 @@ function NoticeCard({ notice }: { notice: BoardNotice }) {
   return (
     <article
       className={cn(
-        // Ramen ritas innanför kortet (border, inte ring) – en ring hamnar utanför
-        // och klipps av anslagsytans overflow-hidden.
-        "flex shrink-0 gap-[1.6rem] overflow-hidden rounded-[1.2rem] border-[0.2rem] bg-surface p-[1.6rem] shadow-[var(--card-shadow)]",
-        notice.pinned ? "border-moss" : "border-transparent",
+        // Tunn ram innanför kortet och en mycket svag skugga. Ramen är lika tjock
+        // på alla kort, så att höjden – och sidindelningen – inte beror på den.
+        "flex shrink-0 gap-[2rem] overflow-hidden rounded-[1.6rem] border bg-[#faf7f1] p-[2.2rem] shadow-[0_1px_2px_rgb(41_43_39/0.03),0_14px_36px_-28px_rgb(41_43_39/0.22)]",
+        notice.pinned ? "border-moss/50" : "border-line/70",
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center gap-x-[1rem] gap-y-[0.3rem]">
+        <div className="flex flex-wrap items-center gap-x-[1.2rem] gap-y-[0.3rem] text-[0.9rem]">
           {notice.pinned ? (
-            <span className="rounded-full bg-moss px-[0.8rem] py-[0.15rem] text-[0.9rem] font-semibold uppercase tracking-[0.12em] text-bone">
+            <span className="flex items-center gap-[0.5rem] font-semibold uppercase tracking-[0.2em] text-moss">
+              <span className="h-[0.45rem] w-[0.45rem] rounded-full bg-moss" aria-hidden />
               Viktigt
             </span>
           ) : null}
           {notice.endsAt ? (
-            <span className="text-[1rem] text-muted">
+            <span className="text-ink/50">
               {/* endsAt är första ögonblicket då anslaget inte gäller – visa dagen innan. */}
               Gäller till och med{" "}
               {shortDateFmt.format(new Date(new Date(notice.endsAt).getTime() - 1))}
             </span>
           ) : null}
         </div>
-        <h3 className="font-display mt-[0.5rem] text-[2.3rem] leading-tight">{notice.title}</h3>
-        <p className="mt-[0.7rem] line-clamp-6 whitespace-pre-line text-[1.45rem] leading-relaxed">
-          {notice.body}
-        </p>
+        <h3 className="font-display mt-[0.8rem] text-[2.7rem] leading-[1.12] tracking-[-0.01em]">
+          {notice.title}
+        </h3>
+        {notice.body ? (
+          <p className="mt-[1rem] line-clamp-6 whitespace-pre-line text-[1.28rem] leading-[1.7] text-ink/75">
+            {notice.body}
+          </p>
+        ) : null}
       </div>
       {notice.imageUrl ? (
         // Vanlig <img> med bildens fasta adress, så att service workern kan
@@ -281,7 +298,7 @@ function NoticeCard({ notice }: { notice: BoardNotice }) {
           alt=""
           // Fast format: med en kort text skulle bilden annars krympa till en
           // remsa lika hög som texten.
-          className="aspect-[4/3] w-[38%] shrink-0 self-start rounded-[0.8rem] object-cover"
+          className="aspect-[4/3] w-[36%] shrink-0 self-start rounded-[1rem] object-cover"
         />
       ) : null}
     </article>
