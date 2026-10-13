@@ -25,6 +25,17 @@ export const viewport: Viewport = {
 export default function BoardLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      {/*
+        Ingen översättningsruta. Next strömmar metadata in i <body>, men
+        Chromium läser bara notranslate i <head> – så skriptet sätter den där,
+        och translate="no" på <html>, medan sidan fortfarande läses in och
+        innan Chromium avgör sidans språk.
+      */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.documentElement.setAttribute("translate","no");var m=document.createElement("meta");m.name="google";m.content="notranslate";document.head.appendChild(m);`,
+        }}
+      />
       {/* Ingen rullning och ingen rullningslist – tavlan är alltid exakt en skärm. */}
       <style>{`html{font-size:1.8vmin;scrollbar-gutter:auto;overflow:hidden}body{overflow:hidden;cursor:none}`}</style>
       {children}
