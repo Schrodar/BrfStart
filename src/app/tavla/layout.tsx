@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   // Adressen innehåller skärmens token. Den får inte följa med till
   // bildservern eller någon annan i en referrer-header.
   referrer: "no-referrer",
+  // Chromium erbjuder annars att översätta sidan när skärmens språk inte är
+  // svenska – en ruta som ingen kan stänga på en skärm utan mus.
+  other: { google: "notranslate" },
 };
 
 export const viewport: Viewport = {
@@ -22,7 +25,8 @@ export const viewport: Viewport = {
 export default function BoardLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <style>{`html{font-size:1.8vmin;scrollbar-gutter:auto}body{overflow:hidden;cursor:none}`}</style>
+      {/* Ingen rullning och ingen rullningslist – tavlan är alltid exakt en skärm. */}
+      <style>{`html{font-size:1.8vmin;scrollbar-gutter:auto;overflow:hidden}body{overflow:hidden;cursor:none}`}</style>
       {children}
     </>
   );

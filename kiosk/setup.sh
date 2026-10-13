@@ -139,10 +139,30 @@ exec $BROWSER \\
   --disable-features=Translate,MediaRouter \\
   --check-for-update-interval=31536000 \\
   --password-store=basic \\
+  --lang=sv-SE \\
   $EXTRA_FLAGS \\
   "\$TAVLA_URL"
 EOF
 chmod 755 /usr/local/bin/tavla-browser
+
+# Låsta inställningar för Chromium: ingen översättningsruta, inga
+# lösenordsfrågor och inga andra rutor som ingen kan stänga på en skärm utan mus.
+for dir in /etc/chromium/policies/managed /etc/chromium-browser/policies/managed; do
+  install -d "$dir"
+  cat > "$dir/tavla.json" <<EOF
+{
+  "TranslateEnabled": false,
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "BrowserSignin": 0,
+  "DefaultNotificationsSetting": 2,
+  "DefaultGeolocationSetting": 2,
+  "MetricsReportingEnabled": false,
+  "PromotionalTabsEnabled": false
+}
+EOF
+done
 
 echo "==> Tjänst"
 cat > /etc/systemd/system/tavla.service <<EOF

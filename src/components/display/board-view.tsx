@@ -88,6 +88,8 @@ export function BoardView({
 
   return (
     <div
+      // Inga översättningsförslag – se även metadata i tavla/layout.tsx.
+      translate="no"
       className={cn(
         "flex h-full w-full flex-col overflow-hidden bg-background text-foreground",
         className,
@@ -196,7 +198,7 @@ export function BoardView({
 
           {/* Kontakter och QR-koder */}
           <footer className="flex items-stretch gap-[2.4rem] border-t border-line bg-bone px-[3rem] py-[2rem] landscape:mt-auto landscape:flex-col landscape:gap-[1.6rem] landscape:px-[2.4rem]">
-            <dl className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-[2rem] gap-y-[1.2rem] landscape:flex-none">
+            <dl className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-[2rem] gap-y-[1.2rem] landscape:flex-none landscape:grid-cols-1">
               {data.contacts.map((c) => (
                 <div key={c.label} className="min-w-0">
                   <dt className="text-[0.95rem] font-semibold uppercase tracking-[0.14em] text-moss">
