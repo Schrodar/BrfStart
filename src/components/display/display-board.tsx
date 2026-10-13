@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { siteConfig } from "@/config/siteConfig";
-import { activeNotices, BOARD_BUILD, isNight, type BoardData } from "@/lib/board";
-import { BoardView, noticePages } from "./board-view";
+import { BOARD_BUILD, isNight, type BoardData } from "@/lib/board";
+import { LiveBoard } from "./live-board";
 
 /**
  * Trapphustavlan som den körs på skärmen.
@@ -25,7 +25,6 @@ const NIGHTLY_KEY = "tavla:nightly";
 const POLL_MS = 60_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const TICK_MS = 10_000;
-const ROTATE_MS = 15_000;
 /** Så många 404 i rad innan en skärm med innehåll ger upp (avaktiverad). */
 const INVALID_AFTER = 3;
 /** Minsta tid mellan två automatiska omladdningar – skydd mot en loop. */
@@ -65,7 +64,6 @@ export function DisplayBoard({ token }: { token: string }) {
   const [data, setData] = useState<BoardData | null>(null);
   const [invalid, setInvalid] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
-  const [page, setPage] = useState(0);
   const lastOk = useRef(0);
   const hasData = useRef(false);
 
@@ -148,17 +146,6 @@ export function DisplayBoard({ token }: { token: string }) {
     return () => clearInterval(id);
   }, []);
 
-  // Bläddra mellan anslagen när de inte får plats på en gång.
-  const pageCount = data && now ? noticePages(activeNotices(data.notices, now)).length : 0;
-  useEffect(() => {
-    if (pageCount <= 1) {
-      setPage(0);
-      return;
-    }
-    const id = setInterval(() => setPage((p) => (p + 1) % pageCount), ROTATE_MS);
-    return () => clearInterval(id);
-  }, [pageCount]);
-
   // Service workern gör att sidan startar även utan nät.
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -198,9 +185,5 @@ export function DisplayBoard({ token }: { token: string }) {
     );
   }
 
-  return (
-    <div className="h-screen">
-      <BoardView data={data} now={now} page={page} />
-    </div>
-  );
+  return <LiveBoard data={data} now={now} />;
 }

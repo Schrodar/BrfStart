@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { requireAdmin } from "@/lib/auth";
 import { getBoardData, getBuildingById } from "@/lib/data";
-import { BoardView } from "@/components/display/board-view";
+import { BoardPreview } from "@/components/display/live-board";
 
 /**
  * Styrelsens förhandsvisning av tavlan, med samma innehåll som en skärm i det
@@ -32,9 +32,7 @@ export default async function BoardPreviewPage({
   return (
     <>
       <style>{`body{cursor:auto}`}</style>
-      <div className="h-screen">
-        <BoardView data={data} now={new Date()} />
-      </div>
+      <BoardPreview data={data} />
     </>
   );
 }

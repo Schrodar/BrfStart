@@ -29,17 +29,23 @@ const shortDateFmt = new Intl.DateTimeFormat("sv-SE", {
   month: "long",
 });
 
-/** Ett anslag med bild tar ungefär dubbelt så mycket plats. */
-const PAGE_CAPACITY = 4;
+/**
+ * Hur mycket som får plats på en sida. Ett anslag med bild tar ungefär dubbelt
+ * så mycket plats. En liggande skärm har bara hälften så mycket höjd för dem.
+ */
+export const PAGE_CAPACITY = { portrait: 4, landscape: 2 } as const;
 const weight = (n: BoardNotice) => (n.imageUrl ? 2 : 1);
 
 /** Delar anslagen i sidor som får plats på skärmen samtidigt. */
-export function noticePages(notices: BoardNotice[]): BoardNotice[][] {
+export function noticePages(
+  notices: BoardNotice[],
+  capacity: number = PAGE_CAPACITY.portrait,
+): BoardNotice[][] {
   const pages: BoardNotice[][] = [];
   let current: BoardNotice[] = [];
   let used = 0;
   for (const n of notices) {
-    if (current.length > 0 && used + weight(n) > PAGE_CAPACITY) {
+    if (current.length > 0 && used + weight(n) > capacity) {
       pages.push(current);
       current = [];
       used = 0;
@@ -55,15 +61,18 @@ export function BoardView({
   data,
   now,
   page = 0,
+  capacity = PAGE_CAPACITY.portrait,
   className,
 }: {
   data: BoardData;
   now: Date;
   /** Vilken sida av anslagen som visas, när de inte får plats på en. */
   page?: number;
+  /** Se PAGE_CAPACITY – skärmen väljer efter hur den står. */
+  capacity?: number;
   className?: string;
 }) {
-  const pages = noticePages(activeNotices(data.notices, now));
+  const pages = noticePages(activeNotices(data.notices, now), capacity);
   const current = pages.length > 0 ? pages[page % pages.length] : [];
   const address =
     data.building?.address ||
@@ -97,98 +106,112 @@ export function BoardView({
         </div>
       </header>
 
-      {/* Anslag */}
-      <main className="flex min-h-0 flex-1 flex-col px-[3rem] pt-[2.4rem]">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.2em] text-moss">
-            Anslag
-          </h2>
-          {pages.length > 1 ? (
-            <div className="flex gap-[0.5rem]" aria-hidden>
-              {pages.map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "h-[0.6rem] w-[0.6rem] rounded-full transition-colors duration-700",
-                    i === page % pages.length ? "bg-moss" : "bg-line",
-                  )}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        {current.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="font-display text-[2rem] text-muted">Inga aktuella anslag just nu.</p>
-          </div>
-        ) : (
-          <div key={page} className="board-fade mt-[1.4rem] flex min-h-0 flex-1 flex-col gap-[1.4rem]">
-            {current.map((n) => (
-              <NoticeCard key={n.id} notice={n} />
-            ))}
-          </div>
-        )}
-
-        {data.news.length > 0 ? (
-          <section className="mt-[1.6rem] border-t border-line pb-[1.6rem] pt-[1.4rem]">
+      {/*
+        Stående skärm: allt i en kolumn – anslag, nyheter, kontakter.
+        Liggande skärm: anslagen till vänster, resten i en kolumn till höger,
+        så att anslagen får hela höjden.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col landscape:flex-row">
+        {/* Anslag */}
+        <main className="flex min-h-0 flex-1 flex-col px-[3rem] pt-[2.4rem] landscape:pb-[2.4rem]">
+          <div className="flex items-baseline justify-between">
             <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.2em] text-moss">
-              Nytt på webbplatsen
+              Anslag
             </h2>
-            <ul className="mt-[0.9rem] grid grid-cols-2 gap-[1.6rem]">
-              {data.news.map((n) => (
-                <li key={n.id}>
-                  <p className="font-display text-[1.5rem] leading-snug">{n.title}</p>
-                  <p className="mt-[0.3rem] line-clamp-2 text-[1.1rem] text-muted">{n.excerpt}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <div className="h-[1.6rem]" />
-        )}
-      </main>
+            {pages.length > 1 ? (
+              <div className="flex gap-[0.5rem]" aria-hidden>
+                {pages.map((_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-[0.6rem] w-[0.6rem] rounded-full transition-colors duration-700",
+                      i === page % pages.length ? "bg-moss" : "bg-line",
+                    )}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
 
-      {/* Kontakter och QR-koder */}
-      <footer className="flex items-stretch gap-[2.4rem] border-t border-line bg-bone px-[3rem] py-[2rem]">
-        <dl className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-[2rem] gap-y-[1.2rem]">
-          {data.contacts.map((c) => (
-            <div key={c.label} className="min-w-0">
-              <dt className="text-[0.95rem] font-semibold uppercase tracking-[0.14em] text-moss">
-                {c.label}
-              </dt>
-              <dd
-                className={cn(
-                  "mt-[0.2rem] font-semibold tabular-nums leading-tight",
-                  // En e-postadress är för lång för telefonnumrets storlek.
-                  c.phone.includes("@") ? "break-all text-[1.15rem]" : "text-[1.6rem]",
-                )}
-              >
-                {c.phone}
-              </dd>
-              {c.name || c.note ? (
-                <dd className="mt-[0.15rem] line-clamp-2 text-[1rem] text-muted">
-                  {[c.name, c.note].filter(Boolean).join(" · ")}
-                </dd>
-              ) : null}
+          {current.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="font-display text-[2rem] text-muted">Inga aktuella anslag just nu.</p>
             </div>
-          ))}
-        </dl>
-        <div className="flex shrink-0 gap-[1.6rem]">
-          {data.qr.map((q) => (
-            <figure key={q.label} className="flex w-[9rem] flex-col items-center">
-              <div
-                className="w-full rounded-[0.6rem] bg-white p-[0.6rem] [&>svg]:h-auto [&>svg]:w-full"
-                // SVG:n genereras på servern av qrcode-paketet ur sajtens egen adress.
-                dangerouslySetInnerHTML={{ __html: q.svg }}
-              />
-              <figcaption className="mt-[0.5rem] text-center text-[0.95rem] font-medium leading-tight">
-                {q.label}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </footer>
+          ) : (
+            // Korten trycks aldrig ihop – får de inte plats klipps det sista
+            // hellre nertill än att texten i alla blir oläslig.
+            <div
+              key={page}
+              className="board-fade mt-[1.4rem] flex min-h-0 flex-1 flex-col gap-[1.4rem] overflow-hidden"
+            >
+              {current.map((n) => (
+                <NoticeCard key={n.id} notice={n} />
+              ))}
+            </div>
+          )}
+        </main>
+
+        <aside className="flex shrink-0 flex-col landscape:w-[34%] landscape:border-l landscape:border-line landscape:bg-bone">
+          {data.news.length > 0 ? (
+            <section className="mx-[3rem] mt-[1.6rem] border-t border-line pb-[1.6rem] pt-[1.4rem] landscape:mx-[2.4rem] landscape:mt-[2.4rem] landscape:border-t-0 landscape:pt-0">
+              <h2 className="text-[1.05rem] font-semibold uppercase tracking-[0.2em] text-moss">
+                Nytt på webbplatsen
+              </h2>
+              <ul className="mt-[0.9rem] grid grid-cols-2 gap-[1.6rem] landscape:grid-cols-1 landscape:gap-[1.2rem]">
+                {data.news.map((n) => (
+                  <li key={n.id}>
+                    <p className="font-display text-[1.5rem] leading-snug">{n.title}</p>
+                    <p className="mt-[0.3rem] line-clamp-2 text-[1.1rem] text-muted">{n.excerpt}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <div className="h-[1.6rem] landscape:hidden" />
+          )}
+
+          {/* Kontakter och QR-koder */}
+          <footer className="flex items-stretch gap-[2.4rem] border-t border-line bg-bone px-[3rem] py-[2rem] landscape:mt-auto landscape:flex-col landscape:gap-[1.6rem] landscape:px-[2.4rem]">
+            <dl className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-[2rem] gap-y-[1.2rem] landscape:flex-none">
+              {data.contacts.map((c) => (
+                <div key={c.label} className="min-w-0">
+                  <dt className="text-[0.95rem] font-semibold uppercase tracking-[0.14em] text-moss">
+                    {c.label}
+                  </dt>
+                  <dd
+                    className={cn(
+                      "mt-[0.2rem] font-semibold tabular-nums leading-tight",
+                      // En e-postadress är för lång för telefonnumrets storlek.
+                      c.phone.includes("@") ? "break-all text-[1.15rem]" : "text-[1.6rem]",
+                    )}
+                  >
+                    {c.phone}
+                  </dd>
+                  {c.name || c.note ? (
+                    <dd className="mt-[0.15rem] line-clamp-2 text-[1rem] text-muted">
+                      {[c.name, c.note].filter(Boolean).join(" · ")}
+                    </dd>
+                  ) : null}
+                </div>
+              ))}
+            </dl>
+            <div className="flex shrink-0 gap-[1.6rem]">
+              {data.qr.map((q) => (
+                <figure key={q.label} className="flex w-[9rem] flex-col items-center">
+                  <div
+                    className="w-full rounded-[0.6rem] bg-white p-[0.6rem] [&>svg]:h-auto [&>svg]:w-full"
+                    // SVG:n genereras på servern av qrcode-paketet ur sajtens egen adress.
+                    dangerouslySetInnerHTML={{ __html: q.svg }}
+                  />
+                  <figcaption className="mt-[0.5rem] text-center text-[0.95rem] font-medium leading-tight">
+                    {q.label}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </footer>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -197,7 +220,7 @@ function NoticeCard({ notice }: { notice: BoardNotice }) {
   return (
     <article
       className={cn(
-        "flex min-h-0 gap-[1.6rem] overflow-hidden rounded-[1.2rem] bg-surface p-[1.8rem] shadow-[var(--card-shadow)]",
+        "flex shrink-0 gap-[1.6rem] overflow-hidden rounded-[1.2rem] bg-surface p-[1.8rem] shadow-[var(--card-shadow)]",
         notice.pinned && "ring-[0.2rem] ring-moss",
       )}
     >
@@ -228,7 +251,9 @@ function NoticeCard({ notice }: { notice: BoardNotice }) {
         <img
           src={notice.imageUrl}
           alt=""
-          className="w-[38%] shrink-0 self-stretch rounded-[0.8rem] object-cover"
+          // Fast format: med en kort text skulle bilden annars krympa till en
+          // remsa lika hög som texten.
+          className="aspect-[4/3] w-[38%] shrink-0 self-start rounded-[0.8rem] object-cover"
         />
       ) : null}
     </article>
