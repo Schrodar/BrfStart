@@ -50,9 +50,9 @@ export interface BoardData {
 export const BOARD_BUILD = process.env.NEXT_PUBLIC_BUILD_STAMP ?? "dev";
 
 /**
- * Hur ofta skärmarna får hämta nytt innehåll. Medvetet glest: varje hämtning
- * är ett funktionsanrop hos Netlify, och gratisnivån räknar dem per sajt och
- * månad (125 000). En gång i timmen räcker till drygt 200 skärmar per sajt.
+ * Hur ofta skärmarna får hämta nytt innehåll. Medvetet glest: anslagen ändras
+ * sällan, och varje hämtning är en databasfråga på en server som delas med
+ * andra föreningar.
  */
 export const REFRESH_OPTIONS = [
   { minutes: 60, label: "Varje timme" },

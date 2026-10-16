@@ -20,7 +20,7 @@ import { LiveBoard } from "./live-board";
  * ändå visar tavlan direkt.
  *
  * Hämtningarna är glesa med flit (styrelsens val: varje timme eller en gång om
- * dagen), eftersom varje hämtning är ett funktionsanrop hos Netlify. Nattetid,
+ * dagen), eftersom innehållet ändras sällan (se REFRESH_OPTIONS). Nattetid,
  * när skärmen ändå är svart, hämtar den inte alls – den hämtar direkt när den
  * tänds igen.
  *

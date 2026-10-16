@@ -1,0 +1,20 @@
+# Byggs om i imagen
+node_modules
+.next
+*.tsbuildinfo
+next-env.d.ts
+
+# Hemligheter – variablerna kommer från Coolify, aldrig från filer i imagen
+.env
+.env*.local
+.env.local
+
+# Behövs inte för att bygga eller köra sajten
+.git
+.claude
+.vscode
+.idea
+docs
+kiosk
+README.md
+npm-debug.log*

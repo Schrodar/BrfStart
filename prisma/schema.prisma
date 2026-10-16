@@ -10,9 +10,11 @@
 
 generator client {
   provider      = "prisma-client-js"
-  // native för den egna datorn, rhel-openssl-3.0.x för Netlifys servrar.
-  // Bygget sker på en annan maskin än där sajten sedan kör.
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  // native för den egna datorn, debian-openssl-3.0.x för Docker-imagen
+  // (node:22-bookworm-slim, se Dockerfile). Bygget i Docker genererar klienten
+  // på samma plattform som den kör på, men målet skrivs ut så att det inte
+  // beror på var `prisma generate` råkar köras.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -698,7 +700,7 @@ model DisplaySettings {
   nightStart     String  @default("23:00")
   nightEnd       String  @default("06:00")
   /// Hur ofta skärmarna hämtar nytt innehåll, i minuter: 60 eller 1440 (en
-  /// gång om dagen). Glest med flit – varje hämtning är ett funktionsanrop
-  /// hos Netlify, och gratisnivån räknar dem per sajt och månad.
+  /// gång om dagen). Glest med flit – skärmarna ska inte belasta servern,
+  /// och innehållet ändras sällan.
   refreshMinutes Int     @default(1440)
 }

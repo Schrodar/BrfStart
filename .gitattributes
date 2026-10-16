@@ -1,2 +1,4 @@
 # Skal-skript körs på Linux (Raspberry Pi) – CRLF får dem att fallera.
 *.sh text eol=lf
+# Byggs på Linux (Coolify) – samma skäl.
+Dockerfile text eol=lf

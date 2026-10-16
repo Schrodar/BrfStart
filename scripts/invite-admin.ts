@@ -1,6 +1,6 @@
 // Bjuder in en styrelseadmin till EN förening och skriver ut aktiveringslänken.
 // Kör: npx tsx scripts/invite-admin.ts <förening-slug> <e-post> <sajtens-adress> [namn]
-//   t.ex. npx tsx scripts/invite-admin.ts brf-pep anna@example.se https://brfpeppar.netlify.app "Anna Andersson"
+//   t.ex. npx tsx scripts/invite-admin.ts brf-pep anna@example.se https://brfpeppar.se "Anna Andersson"
 //
 // Samma sak som "Bjud in" i JnM-panelen, för när panelen inte går att använda.
 // Ersätter promote-admin.ts, som skapade admin-raden direkt: då kunde den som

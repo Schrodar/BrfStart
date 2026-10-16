@@ -128,7 +128,7 @@ const settingsSchema = z.object({
   nightOff: z.boolean(),
   nightStart: time,
   nightEnd: time,
-  // Bara de glesa valen – varje hämtning är ett funktionsanrop hos Netlify.
+  // Bara de glesa valen – se REFRESH_OPTIONS i lib/board.ts.
   refreshMinutes: z.coerce
     .number()
     .refine((n) => REFRESH_OPTIONS.some((o) => o.minutes === n), "Välj hur ofta skärmarna uppdateras."),

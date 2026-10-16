@@ -80,7 +80,7 @@ Admin-rollen kräver dessutom status "godkänd".
 **Skapa den första administratören** – bjud in hen från JnM-panelen, eller kör:
 
 ```bash
-npm run admin:invite -- brf-min-forening din@epost.se https://min-forening.netlify.app "Ditt Namn"
+npm run admin:invite -- brf-min-forening din@epost.se https://min-forening.se "Ditt Namn"
 ```
 
 Skriptet skriver ut en engångslänk till föreningens `/aktivera`. Där väljer
@@ -108,6 +108,39 @@ npm run association:create -- <slug> "<Föreningens namn>"   # skapa tenant-rade
 # sätt ASSOCIATION_SLUG=<slug> i den deployens .env
 npm run admin:invite -- <slug> <admin-epost> <sajtens-adress>  # bjud in styrelse-admin
 ```
+
+## Drift (Coolify på egen VPS)
+
+Varje förening är en egen applikation i Coolify, byggd från repot med
+[`Dockerfile`](Dockerfile) (build pack: Dockerfile, port 3000). Imagen kör
+Next.js fristående server (`output: "standalone"`).
+
+Miljövariabler per förening (se `.env.example`):
+
+| Variabel | Vid bygget | Vid körning |
+|---|:---:|:---:|
+| `DATABASE_URL` | ✓ | ✓ |
+| `ASSOCIATION_SLUG` | ✓ | ✓ |
+| `NEXT_PUBLIC_SITE_URL` | ✓ | ✓ |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | ✓ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | ✓ |
+| `NEXT_PUBLIC_HERO_VIDEO` (valfri) | ✓ | |
+| `SUPABASE_SERVICE_ROLE_KEY` | | ✓ |
+| `ADMIN_NOTIFICATION_EMAIL`, `RESEND_API_KEY`, `EMAIL_FROM` | | ✓ |
+
+"Vid bygget" = markera som *Build Variable* i Coolify. De publika sidorna
+förrenderas med föreningens data, så bygget läser databasen, och `NEXT_PUBLIC_*`
+bakas in i klientkoden – ändras de krävs ett nytt bygge, inte bara omstart.
+`DIRECT_URL` behövs bara när migreringar körs (lokalt), inte i Coolify.
+
+Herofilmen ligger inte i repot och följer därför inte med i bygget: lägg den i
+Supabase Storage (publik bucket) eller på en CDN och ange adressen i
+`NEXT_PUBLIC_HERO_VIDEO`.
+
+Servern har 2 vCPU/4 GB: ställ Coolify på **ett bygge i taget** (Servers →
+localhost → Advanced → Concurrent builds = 1). Dockerfilen sätter ett minnestak
+för bygget; sätt gärna även ett minnestak per container (ca 350 MB) under
+applikationens *Resource Limits*.
 
 ## Funktioner
 
