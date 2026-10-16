@@ -7,7 +7,7 @@ import {
   type Notice,
 } from "@/lib/data";
 import { dateStrSe, lastDaySe } from "@/lib/board-dates";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import {
   Badge,
   buttonClasses,
@@ -31,6 +31,15 @@ function stateOf(n: Notice, now: number): NoticeState {
 
 const TONE = { aktivt: "success", kommande: "warning", avslutat: "neutral" } as const;
 
+// Svensk tid uttryckligen – sidan renderas på en server i UTC.
+const seenFmt = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Europe/Stockholm",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export default async function AdminBoardsPage() {
   const [displays, notices, buildings, settings] = await Promise.all([
     listDisplays(),
@@ -45,7 +54,7 @@ export default async function AdminBoardsPage() {
     <div className="space-y-10">
       <PageHeader
         title="Trapphustavlor"
-        description="Anslag som visas på skärmarna i trapphusen. Skärmarna hämtar nytt innehåll varje minut och visar det senaste de fått även om nätet ligger nere."
+        description="Anslag som visas på skärmarna i trapphusen. Skärmarna hämtar nytt innehåll så ofta som anges under Inställningar och visar det senaste de fått även om nätet ligger nere."
         actions={
           <Link href="/admin/tavlor/anslag/ny" className={buttonClasses("primary", "sm")}>
             Nytt anslag
@@ -154,13 +163,17 @@ export default async function AdminBoardsPage() {
                     <td className="px-4 py-3 font-medium text-foreground">{d.name}</td>
                     <td className="px-4 py-3 text-muted">{d.buildingName ?? "–"}</td>
                     <td className="px-4 py-3">
-                      {d.online ? (
-                        <Badge tone="success">Igång</Badge>
-                      ) : d.lastSeenAt ? (
-                        <span className="text-muted">
-                          <Badge tone="danger">Inte kontakt</Badge>
-                          <span className="ml-2 text-xs">sedan {formatDateTime(d.lastSeenAt)}</span>
-                        </span>
+                      {d.lastSeenAt ? (
+                        <div className="flex flex-col items-start gap-1">
+                          {d.online ? (
+                            <Badge tone="success">Igång</Badge>
+                          ) : (
+                            <Badge tone="danger">Inte kontakt</Badge>
+                          )}
+                          <span className="text-xs text-muted">
+                            Senast kontakt {seenFmt.format(new Date(d.lastSeenAt))}
+                          </span>
+                        </div>
                       ) : (
                         <Badge tone="neutral">Inte startad</Badge>
                       )}

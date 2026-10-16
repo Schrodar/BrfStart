@@ -42,8 +42,8 @@ ligger nere.
 4. **Kontrollera skärmen.** Efter omstarten visar den tavlan. I
    adminpanelen står skärmen som **Igång** inom någon minut.
 5. **Testa offline innan du lämnar.** Dra ur nätverkskabeln (eller stäng av
-   routern) och starta om Pi:n. Tavlan ska visas som vanligt. Den uppdateras
-   igen inom en minut när nätet är tillbaka.
+   routern) och starta om Pi:n. Tavlan ska visas som vanligt. När nätet är
+   tillbaka hämtar den nytt innehåll inom 15 minuter.
 
 ## Testa med en gammal bärbar dator i stället för en Pi
 
@@ -119,8 +119,14 @@ senaste start.
 
 ## Så klarar tavlan nätavbrott
 
-- **Sidan:** tavlan hämtar nytt innehåll varje minut. Om hämtningen
-  misslyckas visar den det den redan har, utan något felmeddelande.
+- **Sidan:** tavlan hämtar nytt innehåll varje timme eller en gång om dagen,
+  enligt styrelsens val under Trapphustavlor → Inställningar. Den hämtar
+  ingenting nattetid, utan hämtar direkt när skärmen tänds igen. Om
+  hämtningen misslyckas visar den det den redan har, utan något
+  felmeddelande, och försöker igen efter 15 minuter.
+- **Klockan** på tavlan hämtas aldrig från servern. Den följer Pi:ns
+  systemklocka, som ställs mot internettid (NTP) och går vidare på
+  RTC-batteriet utan nät.
 - **Senaste innehållet** sparas i webbläsaren (localStorage).
 - **Service workern** (`public/tavla/sw.js`) sparar sidan, skripten,
   typsnitten och bilderna. Därför kan tavlan starta helt utan nät.
@@ -134,9 +140,13 @@ senaste start.
 
 ## Skärmens status
 
-Admin → Trapphustavlor visar en status för varje skärm:
+Admin → Trapphustavlor visar en status för varje skärm, och när den senast
+hörde av sig. Skärmen hör bara av sig när den hämtar (varje timme eller en
+gång om dagen, aldrig nattetid), så "Senast kontakt" kan vara flera timmar
+gammal på en skärm som fungerar.
 
-- **Igång:** skärmen har hämtat innehåll de senaste minuterna.
+- **Igång:** skärmen har hämtat som väntat. Den får missa en hämtning, plus
+  natten, innan den räknas som borta.
 - **Inte kontakt:** skärmen har inte hört av sig. Tavlan visar fortfarande
   sitt senaste innehåll, men nya anslag når inte fram förrän nätet är
   tillbaka.

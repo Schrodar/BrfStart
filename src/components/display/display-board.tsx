@@ -2,29 +2,39 @@
 
 import { useEffect, useRef, useState } from "react";
 import { siteConfig } from "@/config/siteConfig";
-import { BOARD_BUILD, isNight, type BoardData } from "@/lib/board";
+import {
+  BOARD_BUILD,
+  DEFAULT_REFRESH_MINUTES,
+  isNight,
+  type BoardData,
+} from "@/lib/board";
 import { LiveBoard } from "./live-board";
 
 /**
  * Trapphustavlan som den körs på skärmen.
  *
- * Huvudregeln: tavlan ska aldrig visa att nätet är borta. Den hämtar nytt
- * innehåll varje minut, och misslyckas det fortsätter den visa det senaste den
- * fick. Det senaste svaret sparas också i localStorage, och service workern
- * (public/tavla/sw.js) sparar sidan, skripten, typsnitten och bilderna – så att
- * en skärm som startar om utan nät ändå visar tavlan direkt.
+ * Huvudregeln: tavlan ska aldrig visa att nätet är borta. Misslyckas en
+ * hämtning fortsätter den visa det senaste den fick. Det senaste svaret sparas
+ * också i localStorage, och service workern (public/tavla/sw.js) sparar sidan,
+ * skripten, typsnitten och bilderna – så att en skärm som startar om utan nät
+ * ändå visar tavlan direkt.
  *
- * Allt tidsberoende (vilka anslag som gäller, nattläge, klockan) räknas ut här
- * med skärmens egen klocka och fortsätter därför fungera offline.
+ * Hämtningarna är glesa med flit (styrelsens val: varje timme eller en gång om
+ * dagen), eftersom varje hämtning är ett funktionsanrop hos Netlify. Nattetid,
+ * när skärmen ändå är svart, hämtar den inte alls – den hämtar direkt när den
+ * tänds igen.
+ *
+ * Allt tidsberoende (klockan, vilka anslag som gäller, nattläget) räknas ut här
+ * med skärmens egen klocka. Klockan hämtas aldrig från servern: Pi:n ställer
+ * sin systemklocka mot internettid (NTP) och går på sitt RTC-batteri utan nät.
  */
 
 const STORAGE_KEY = "tavla:data";
 const RELOADED_KEY = "tavla:reloadedAt";
-const NIGHTLY_KEY = "tavla:nightly";
 
-const POLL_MS = 60_000;
 const FETCH_TIMEOUT_MS = 15_000;
-const TICK_MS = 10_000;
+/** Nytt försök efter en misslyckad hämtning – aldrig senare än intervallet. */
+const RETRY_MINUTES = 15;
 /** Så många 404 i rad innan en skärm med innehåll ger upp (avaktiverad). */
 const INVALID_AFTER = 3;
 /** Minsta tid mellan två automatiska omladdningar – skydd mot en loop. */
@@ -60,23 +70,36 @@ function reloadOnce() {
   window.location.reload();
 }
 
+/** Millisekunder till nästa hela minut (plus en liten marginal). */
+function msToNextMinute(): number {
+  return 60_000 - (Date.now() % 60_000) + 50;
+}
+
 export function DisplayBoard({ token }: { token: string }) {
   const [data, setData] = useState<BoardData | null>(null);
   const [invalid, setInvalid] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
-  const lastOk = useRef(0);
-  const hasData = useRef(false);
 
-  // Hämtning: cachen först, sedan servern varje minut.
+  // Schemaläggningen läser och skriver refs, så att den inte startas om när
+  // innehållet byts.
+  const dataRef = useRef<BoardData | null>(null);
+  const nextFetchAt = useRef(0);
+  const inFlight = useRef(false);
+  const wasNight = useRef(false);
+  const notFound = useRef(0);
+
   useEffect(() => {
-    const cached = readCache();
-    if (cached) {
-      hasData.current = true;
-      setData(cached);
-    }
+    const show = (next: BoardData | null) => {
+      dataRef.current = next;
+      setData(next);
+    };
 
-    let notFound = 0;
+    const refreshMs = () =>
+      (dataRef.current?.refreshMinutes ?? DEFAULT_REFRESH_MINUTES) * 60_000;
+    const retryMs = () => Math.min(refreshMs(), RETRY_MINUTES * 60_000);
+
     async function load() {
+      inFlight.current = true;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
       try {
@@ -89,62 +112,64 @@ export function DisplayBoard({ token }: { token: string }) {
           // En ny skärm med fel adress ska synas direkt. En skärm som redan
           // visar något släpper det först efter flera svar i rad – då har den
           // avaktiverats eller fått ny token.
-          notFound += 1;
-          if (!hasData.current || notFound >= INVALID_AFTER) {
-            hasData.current = false;
+          notFound.current += 1;
+          if (!dataRef.current || notFound.current >= INVALID_AFTER) {
             store(STORAGE_KEY, null);
-            setData(null);
+            show(null);
             setInvalid(true);
           }
+          nextFetchAt.current = Date.now() + retryMs();
           return;
         }
-        if (!res.ok) return;
+        if (!res.ok) {
+          nextFetchAt.current = Date.now() + retryMs();
+          return;
+        }
         const next = (await res.json()) as BoardData;
-        notFound = 0;
-        lastOk.current = Date.now();
-        hasData.current = true;
+        notFound.current = 0;
         setInvalid(false);
-        setData(next);
+        show(next);
         store(STORAGE_KEY, JSON.stringify(next));
+        nextFetchAt.current = Date.now() + refreshMs();
         // Ny deploy: hämta den nya sidan när servern bevisligen svarar.
         if (next.build !== BOARD_BUILD) reloadOnce();
       } catch {
-        // Inget nät eller timeout: behåll det som visas.
+        // Inget nät eller timeout: behåll det som visas och försök snart igen.
+        nextFetchAt.current = Date.now() + retryMs();
       } finally {
         clearTimeout(timer);
+        inFlight.current = false;
       }
     }
 
-    load();
-    const id = setInterval(load, POLL_MS);
-    return () => clearInterval(id);
-  }, [token]);
+    // Start: visa det sparade direkt. Startar skärmen nattetid med sparat
+    // innehåll (t.ex. Pi:ns omstart kl. 04.15) väntar hämtningen till morgonen.
+    const cached = readCache();
+    if (cached) show(cached);
+    const startsAtNight = !!cached && isNight(cached.night, new Date());
+    wasNight.current = startsAtNight;
+    nextFetchAt.current = startsAtNight ? Number.POSITIVE_INFINITY : 0;
 
-  // Klockan, och en omladdning per natt mot minnesläckor i webbläsaren.
-  useEffect(() => {
+    // Ett tick vid varje ny minut: klockan byter minut i rätt sekund, och
+    // samma tick avgör nattläget och om det är dags att hämta.
+    let timeout: ReturnType<typeof setTimeout>;
     const tick = () => {
+      // Nästa tick schemaläggs först – klockan får aldrig stanna, inte ens om
+      // något nedan skulle kasta ett fel.
+      timeout = setTimeout(tick, msToNextMinute());
+
       const t = new Date();
       setNow(t);
-      const today = t.toDateString();
-      const isReloadWindow = t.getHours() === 3 && t.getMinutes() >= 30;
-      const online = Date.now() - lastOk.current < 3 * 60_000;
-      if (isReloadWindow && online) {
-        let done = false;
-        try {
-          done = localStorage.getItem(NIGHTLY_KEY) === today;
-        } catch {
-          done = true;
-        }
-        if (!done) {
-          store(NIGHTLY_KEY, today);
-          window.location.reload();
-        }
-      }
+
+      const night = dataRef.current ? isNight(dataRef.current.night, t) : false;
+      if (wasNight.current && !night) nextFetchAt.current = 0; // morgon: hämta direkt
+      wasNight.current = night;
+
+      if (!night && !inFlight.current && Date.now() >= nextFetchAt.current) load();
     };
     tick();
-    const id = setInterval(tick, TICK_MS);
-    return () => clearInterval(id);
-  }, []);
+    return () => clearTimeout(timeout);
+  }, [token]);
 
   // Service workern gör att sidan startar även utan nät.
   useEffect(() => {

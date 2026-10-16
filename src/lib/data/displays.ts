@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { getTenantDb } from "@/lib/tenant";
+import { DEFAULT_REFRESH_MINUTES, nightMinutes, normalizeRefresh } from "@/lib/board";
 
 /**
  * Trapphustavlor. Varje skärm har en egen långlivad token som ligger i dess
@@ -16,11 +17,11 @@ const digest = (value: string) =>
 
 const newToken = () => randomBytes(32).toString("hex");
 
-/** Hur länge en skärm räknas som igång efter sin senaste hämtning. */
-export const DISPLAY_ONLINE_MINUTES = 5;
-
 /** lastSeenAt skrivs högst så här ofta, inte vid varje hämtning. */
 const SEEN_WRITE_MS = 5 * 60_000;
+
+/** Marginal innan en skärm som inte hört av sig räknas som borta. */
+const ONLINE_MARGIN_MINUTES = 15;
 
 export interface DisplayItem {
   id: string;
@@ -34,14 +35,20 @@ export interface DisplayItem {
 
 export async function listDisplays(): Promise<DisplayItem[]> {
   const { db } = await getTenantDb();
-  const rows = await db.display.findMany({
-    where: { revokedAt: null },
-    orderBy: { name: "asc" },
-    include: { building: { select: { name: true } } },
-  });
-  // Lite marginal utöver hämtintervallet, så att en skärm inte blinkar röd
-  // bara för att skrivningen av lastSeenAt glesas ut.
-  const cutoff = Date.now() - (DISPLAY_ONLINE_MINUTES * 60_000 + SEEN_WRITE_MS);
+  const [rows, settings] = await Promise.all([
+    db.display.findMany({
+      where: { revokedAt: null },
+      orderBy: { name: "asc" },
+      include: { building: { select: { name: true } } },
+    }),
+    getDisplaySettings(),
+  ]);
+  // Skärmen hör av sig vid varje hämtning, och hämtar inte alls nattetid. En
+  // skärm som missat en hämtning räknas fortfarande som igång – först när två
+  // har uteblivit, plus natten och lite marginal, är den borta.
+  const allowedMinutes =
+    settings.refreshMinutes * 2 + nightMinutes(nightOf(settings)) + ONLINE_MARGIN_MINUTES;
+  const cutoff = Date.now() - allowedMinutes * 60_000;
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
@@ -111,8 +118,8 @@ export interface ResolvedDisplay {
 
 /**
  * Skärmen som hör till token, eller null. Noterar samtidigt att skärmen är
- * igång – men skriver högst var femte minut, så att en skärm som hämtar varje
- * minut inte ger en databasskrivning varje minut.
+ * igång – men skriver högst var femte minut, om en skärm (eller någon som
+ * laddar om sidan) skulle hämta tätare än inställningen.
  */
 export async function getDisplayByToken(token: string): Promise<ResolvedDisplay | null> {
   if (!token) return null;
@@ -142,13 +149,18 @@ export interface DisplaySettings {
   /** "HH:MM". Lika värden = skärmen släcks aldrig. */
   nightStart: string;
   nightEnd: string;
+  /** Minuter mellan hämtningarna – ett av REFRESH_OPTIONS. */
+  refreshMinutes: number;
 }
 
 export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   showNews: true,
   nightStart: "23:00",
   nightEnd: "06:00",
+  refreshMinutes: DEFAULT_REFRESH_MINUTES,
 };
+
+const nightOf = (s: DisplaySettings) => ({ start: s.nightStart, end: s.nightEnd });
 
 export async function getDisplaySettings(): Promise<DisplaySettings> {
   const { db } = await getTenantDb();
@@ -158,6 +170,7 @@ export async function getDisplaySettings(): Promise<DisplaySettings> {
     showNews: row.showNews,
     nightStart: row.nightStart,
     nightEnd: row.nightEnd,
+    refreshMinutes: normalizeRefresh(row.refreshMinutes),
   };
 }
 

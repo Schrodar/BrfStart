@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { REFRESH_OPTIONS } from "@/lib/board";
 import type { DisplaySettings } from "@/lib/data/displays";
 import type { FormState } from "@/lib/form";
-import { Field, FormError, FormSuccess, Input, SubmitButton } from "@/components/ui";
+import { Field, FormError, FormSuccess, Input, Select, SubmitButton } from "@/components/ui";
 import { updateDisplaySettingsAction } from "./actions";
 
 export function DisplaySettingsForm({ settings }: { settings: DisplaySettings }) {
@@ -18,6 +19,21 @@ export function DisplaySettingsForm({ settings }: { settings: DisplaySettings })
     <form action={formAction} className="space-y-4">
       <FormError>{state.error}</FormError>
       <FormSuccess>{state.success}</FormSuccess>
+
+      <Field
+        label="Uppdatera skärmarna"
+        htmlFor="refreshMinutes"
+        hint="Hur ofta skärmarna hämtar nya anslag. Klockan på skärmen går rätt oavsett – den hämtas aldrig härifrån."
+        className="max-w-sm"
+      >
+        <Select id="refreshMinutes" name="refreshMinutes" defaultValue={String(settings.refreshMinutes)}>
+          {REFRESH_OPTIONS.map((o) => (
+            <option key={o.minutes} value={o.minutes}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -37,7 +53,7 @@ export function DisplaySettingsForm({ settings }: { settings: DisplaySettings })
           onChange={(e) => setNightOff(e.target.checked)}
           className="h-4 w-4 rounded border-border"
         />
-        Släck skärmarna nattetid
+        Släck skärmarna nattetid (de hämtar då heller inget nytt förrän de tänds)
       </label>
 
       {nightOff ? (

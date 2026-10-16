@@ -4,7 +4,6 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { activeNotices, type BoardData, type BoardNotice } from "@/lib/board";
 import { BoardView } from "./board-view";
 
-const TICK_MS = 10_000;
 const ROTATE_MS = 15_000;
 
 /**
@@ -103,10 +102,14 @@ export function LiveBoard({ data, now }: { data: BoardData; now: Date }) {
 export function BoardPreview({ data }: { data: BoardData }) {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    const tick = () => setNow(new Date());
+    // Ett tick vid varje ny minut, som på skärmen.
+    let timeout: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      setNow(new Date());
+      timeout = setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+    };
     tick();
-    const id = setInterval(tick, TICK_MS);
-    return () => clearInterval(id);
+    return () => clearTimeout(timeout);
   }, []);
   if (!now) return <div className="h-screen bg-background" />;
   return <LiveBoard data={data} now={now} />;

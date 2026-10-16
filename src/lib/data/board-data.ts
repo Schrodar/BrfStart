@@ -2,7 +2,7 @@ import { BOARD_BUILD, type BoardContact, type BoardData } from "@/lib/board";
 import { getAssociationProfile } from "./association";
 import { getDisplaySettings } from "./displays";
 import { getMaintenanceSettings } from "./maintenance";
-import { getPublishedNews } from "./news";
+import { getLatestNews } from "./news";
 import { getNoticesForBuilding } from "./notices";
 
 /**
@@ -17,7 +17,7 @@ export async function getBoardData(
     getDisplaySettings(),
     getMaintenanceSettings(),
     getNoticesForBuilding(building?.id ?? null),
-    getPublishedNews(),
+    getLatestNews(2),
   ]);
 
   const contacts: BoardContact[] = [];
@@ -72,15 +72,9 @@ export async function getBoardData(
       endsAt: n.endsAt,
       pinned: n.pinned,
     })),
-    news: settings.showNews
-      ? news.slice(0, 2).map((n) => ({
-          id: n.id,
-          title: n.title,
-          excerpt: n.excerpt,
-          publishedAt: n.publishedAt,
-        }))
-      : [],
+    news: settings.showNews ? news : [],
     contacts,
     night: { start: settings.nightStart, end: settings.nightEnd },
+    refreshMinutes: settings.refreshMinutes,
   };
 }

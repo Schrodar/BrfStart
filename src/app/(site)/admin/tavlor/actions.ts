@@ -27,6 +27,7 @@ import {
   validateFile,
 } from "@/lib/storage";
 import { endOfDaySe, startOfDaySe } from "@/lib/board-dates";
+import { REFRESH_OPTIONS } from "@/lib/board";
 import type { FormState } from "@/lib/form";
 
 function revalidate() {
@@ -127,6 +128,10 @@ const settingsSchema = z.object({
   nightOff: z.boolean(),
   nightStart: time,
   nightEnd: time,
+  // Bara de glesa valen – varje hämtning är ett funktionsanrop hos Netlify.
+  refreshMinutes: z.coerce
+    .number()
+    .refine((n) => REFRESH_OPTIONS.some((o) => o.minutes === n), "Välj hur ofta skärmarna uppdateras."),
 });
 
 export async function updateDisplaySettingsAction(
@@ -139,17 +144,22 @@ export async function updateDisplaySettingsAction(
     nightOff: formData.get("nightOff") === "on",
     nightStart: formData.get("nightStart"),
     nightEnd: formData.get("nightEnd"),
+    refreshMinutes: formData.get("refreshMinutes"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const { showNews, nightOff, nightStart, nightEnd } = parsed.data;
+  const { showNews, nightOff, nightStart, nightEnd, refreshMinutes } = parsed.data;
   // Utan nattläge sparas lika tider – det betyder "alltid på".
   await updateDisplaySettings({
     showNews,
     nightStart: nightOff ? nightStart : "00:00",
     nightEnd: nightOff ? nightEnd : "00:00",
+    refreshMinutes,
   });
   revalidate();
-  return { success: "Inställningarna är sparade. Skärmarna hämtar dem inom en minut." };
+  return {
+    success:
+      "Inställningarna är sparade. Skärmarna får dem nästa gång de hämtar nytt innehåll.",
+  };
 }
 
 // ---------------------------------------------------------------------------

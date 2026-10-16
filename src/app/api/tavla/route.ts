@@ -3,7 +3,8 @@ import { getBoardData, getDisplayByToken } from "@/lib/data";
 
 /**
  * Innehållet till en trapphustavla. Skärmen skickar sin token som
- * "Authorization: Bearer <token>" och hämtar igen varje minut.
+ * "Authorization: Bearer <token>" och hämtar igen enligt styrelsens val
+ * (varje timme eller en gång om dagen, aldrig nattetid).
  *
  * Allt som inte stämmer – saknad, okänd eller återkallad token – ger samma 404,
  * så att svaren inte avslöjar vilka skärmar som finns.

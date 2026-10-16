@@ -60,14 +60,15 @@ export async function getNoticeById(id: string): Promise<Notice | null> {
 }
 
 /**
- * Anslagen en skärm ska känna till: de som visas nu och de som börjar inom ett
+ * Anslagen en skärm ska känna till: de som visas nu och de som börjar inom två
  * dygn. Skärmen filtrerar själv på tiden, så att ett anslag dyker upp och
- * försvinner i rätt stund även när nätet ligger nere.
+ * försvinner i rätt stund även när nätet ligger nere – och även om den bara
+ * hämtar en gång om dygnet.
  */
 export async function getNoticesForBuilding(buildingId: string | null): Promise<Notice[]> {
   const { db } = await getTenantDb();
   const now = new Date();
-  const soon = new Date(now.getTime() + 86_400_000);
+  const soon = new Date(now.getTime() + 2 * 86_400_000);
   const rows = await db.notice.findMany({
     where: {
       startsAt: { lte: soon },

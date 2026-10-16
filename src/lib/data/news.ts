@@ -29,6 +29,23 @@ export async function getPublishedNews(): Promise<NewsPost[]> {
   return rows.map(toNews);
 }
 
+/**
+ * De senaste publicerade nyheterna, bara rubrik och ingress – för
+ * trapphustavlan, som inte ska hämta alla nyheters fulla text vid varje anrop.
+ */
+export async function getLatestNews(
+  limit: number,
+): Promise<{ id: string; title: string; excerpt: string; publishedAt: string | null }[]> {
+  const { db } = await getTenantDb();
+  const rows = await db.newsPost.findMany({
+    where: { published: true },
+    orderBy: { publishedAt: "desc" },
+    take: limit,
+    select: { id: true, title: true, excerpt: true, publishedAt: true },
+  });
+  return rows.map((n) => ({ ...n, publishedAt: n.publishedAt?.toISOString() ?? null }));
+}
+
 /** Alla nyheter inkl. utkast (admin). */
 export async function getAllNews(): Promise<NewsPost[]> {
   const { db } = await getTenantDb();
