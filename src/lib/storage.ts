@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -11,8 +12,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * Buckets delas av alla föreningar som kör mot samma Supabase-projekt, så
  * anroparen ansvarar för att prefixa med associationId (se uploadFile).
  *
- * Alla operationer går via service role-klienten (server only). Behörighet
- * kontrolleras i respektive server action innan dessa anropas.
+ * Alla operationer går via service role-klienten (server only), utom
+ * getPublicUrl som bara bygger en adress. Behörighet kontrolleras i respektive
+ * server action innan dessa anropas.
  */
 
 export const BUCKET_PHOTOS = "apartment-photos";
@@ -71,9 +73,16 @@ export async function removeFile(bucket: string, path: string): Promise<void> {
   await supabase.storage.from(bucket).remove([path]);
 }
 
-/** Stabil publik URL (för foton i publik bucket). */
+/**
+ * Stabil publik URL (för foton i publik bucket). Bara en sammansatt adress –
+ * inget anrop görs – så den publika anon-nyckeln räcker. De publika sidorna
+ * förrenderas vid bygget, och service role-nyckeln ska inte behövas där.
+ */
 export function getPublicUrl(bucket: string, path: string): string {
-  const supabase = createSupabaseAdminClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
