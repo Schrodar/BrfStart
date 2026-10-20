@@ -19,7 +19,8 @@
     "association:create": "tsx scripts/create-association.ts",
     "association:delete": "tsx scripts/delete-association.ts",
     "users:prune": "tsx scripts/delete-orphan-users.ts",
-    "storage:setup": "tsx scripts/setup-storage.ts"
+    "storage:setup": "tsx scripts/setup-storage.ts",
+    "maintenance:number": "tsx scripts/number-maintenance-requests.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

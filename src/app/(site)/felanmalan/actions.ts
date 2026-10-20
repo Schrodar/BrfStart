@@ -12,25 +12,21 @@ export interface MaintenanceState {
 }
 
 /**
- * Namnet är frivilligt, men styrelsen måste kunna nå anmälaren – därför krävs
- * minst ett av e-post och telefon. Regeln ligger i ett refine på hela objektet
- * eftersom den inte går att uttrycka per fält.
+ * Namnet är frivilligt, men styrelsen måste kunna svara anmälaren – och svaret
+ * går med e-post, så e-posten krävs. Telefon frågas inte längre efter; kolumnen
+ * finns kvar för äldre ärenden.
  */
-const schema = z
-  .object({
-    name: z.string().default(""),
-    email: z
-      .union([z.string().email("Ange en giltig e-postadress."), z.literal("")])
-      .default(""),
-    phone: z.string().default(""),
-    categoryId: z.string().min(1, "Välj en kategori."),
-    location: z.string().min(2, "Ange var felet finns."),
-    description: z.string().min(5, "Beskriv felet lite mer utförligt."),
-  })
-  .refine((v) => v.email.trim() !== "" || v.phone.trim() !== "", {
-    message: "Fyll i e-post eller telefon så att styrelsen kan nå dig.",
-    path: ["email"],
-  });
+const schema = z.object({
+  name: z.string().default(""),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Fyll i din e-post så att styrelsen kan svara dig.")
+    .email("Ange en giltig e-postadress."),
+  categoryId: z.string().min(1, "Välj en kategori."),
+  location: z.string().min(2, "Ange var felet finns."),
+  description: z.string().min(5, "Beskriv felet lite mer utförligt."),
+});
 
 const SUCCESS =
   "Tack! Din felanmälan har skickats till styrelsen. Vi återkommer om vi behöver mer information.";
@@ -52,7 +48,6 @@ export async function submitMaintenance(
   const parsed = schema.safeParse({
     name: String(formData.get("name") ?? ""),
     email: String(formData.get("email") ?? ""),
-    phone: String(formData.get("phone") ?? ""),
     categoryId: formData.get("categoryId"),
     location: formData.get("location"),
     description: formData.get("description"),
@@ -69,6 +64,7 @@ export async function submitMaintenance(
   // i formuläret skulle låta vem som helst lägga ärenden på någon annan.
   const result = await createMaintenanceRequest({
     ...parsed.data,
+    phone: "",
     memberId: user?.id ?? null,
   });
   if (!result.ok) return { error: result.error };
@@ -79,5 +75,12 @@ export async function submitMaintenance(
     name: result.request.name || "Anonym anmälare",
   });
 
-  return { success: SUCCESS };
+  // Numret gör det lätt att hänvisa till ärendet. Inloggade kan dessutom följa
+  // det och läsa styrelsens svar på Mina sidor.
+  const number = result.request.number;
+  const reference = number != null ? ` Ärendenummer: #${number}.` : "";
+  const follow = user
+    ? " Du kan följa ärendet och läsa styrelsens svar under Mina sidor."
+    : "";
+  return { success: `${SUCCESS}${reference}${follow}` };
 }

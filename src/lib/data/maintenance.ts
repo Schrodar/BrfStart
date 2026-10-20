@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import type {
   MaintenanceCategory as DbCategory,
   MaintenanceEvent as DbEvent,
@@ -8,9 +9,11 @@ import type {
   MaintenanceCategory,
   MaintenanceCategoryOption,
   MaintenanceEvent,
+  MaintenanceEventKind,
   MaintenanceRequest,
   MaintenanceSettings,
   MaintenanceStatus,
+  MemberMaintenanceMessage,
   MemberMaintenanceRequest,
   MemberMaintenanceSummary,
 } from "@/lib/types";
@@ -91,6 +94,8 @@ function toEvent(e: DbEvent): MaintenanceEvent {
   return {
     id: e.id,
     body: e.body,
+    kind: e.kind,
+    visibleToMember: e.visibleToMember,
     statusFrom: e.statusFrom,
     statusTo: e.statusTo,
     author: e.author,
@@ -103,6 +108,7 @@ function toRequest(
 ): MaintenanceRequest {
   return {
     id: r.id,
+    number: r.number,
     name: r.name,
     email: r.email,
     phone: r.phone,
@@ -347,39 +353,70 @@ export async function createMaintenanceRequest(
   });
   if (!category) return { ok: false, error: "Välj en kategori." };
 
-  const row = await db.maintenanceRequest.create({
-    data: {
-      associationId,
-      ...input,
-      // Medlemmen har "sett" sitt ärende när hen skickar in det – annars
-      // skulle det räknas som en ny uppdatering direkt.
-      memberSeenAt: input.memberId ? new Date() : null,
-    },
-    include: { category: true, events: true },
-  });
-  return { ok: true, request: toRequest(row) };
+  // Löpnumret är nästa lediga i föreningen. Två anmälningar samtidigt kan få
+  // samma förslag – det unika indexet stoppar den ena, som då försöker igen.
+  for (let attempt = 0; ; attempt++) {
+    const last = await db.maintenanceRequest.aggregate({
+      _max: { number: true },
+    });
+    try {
+      const row = await db.maintenanceRequest.create({
+        data: {
+          associationId,
+          ...input,
+          number: (last._max.number ?? 0) + 1,
+          // Medlemmen har "sett" sitt ärende när hen skickar in det – annars
+          // skulle det räknas som en ny uppdatering direkt.
+          memberSeenAt: input.memberId ? new Date() : null,
+        },
+        include: { category: true, events: true },
+      });
+      return { ok: true, request: toRequest(row) };
+    } catch (error) {
+      const clash =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002";
+      if (!clash || attempt >= 4) throw error;
+    }
+  }
 }
 
 export interface RequestUpdate {
   status: MaintenanceStatus;
   assignedTo: string;
-  /** Ny notering. Tom sträng = ingen notering den här gången. */
+  /** Styrelsens beslut. Tom sträng = inget den här gången. */
+  decision: string;
+  /** Ska beslutet synas för medlemmen på Mina sidor? */
+  decisionVisible: boolean;
+  /** Svar till medlemmen – syns alltid på Mina sidor. */
+  reply: string;
+  /** Intern notering – syns bara för styrelsen. */
   note: string;
   /** Namnet på den som sparar, för historiken. */
   author: string;
 }
 
+export interface RequestUpdateResult {
+  request: MaintenanceRequest;
+  statusChanged: boolean;
+  /** Fick medlemmen något nytt att läsa – ett svar eller ett synligt beslut? */
+  messageToMember: boolean;
+}
+
 /**
- * Sparar status och tilldelning, och lägger till en rad i historiken.
+ * Sparar status och tilldelning, och lägger till händelser i
+ * historiken: en per text som skrivits – beslut, svar, notering, i den
+ * ordningen. Statusändringen följer med den första. Ändras bara status utan
+ * text blir den en egen händelse, så att tidslinjen visar vad som hände och
+ * inte bara vad någon skrev.
  *
- * Noteringen skrivs ALDRIG över – varje sparning blir en ny händelse. Ändras
- * bara status utan notering loggas det ändå, så att tidslinjen visar vad som
- * hände och inte bara vad någon skrev.
+ * Händelserna skrivs ALDRIG över, och allt sparas i en transaktion – ett
+ * ärende blir aldrig halvsparat.
  */
 export async function updateMaintenanceRequest(
   id: string,
   input: RequestUpdate,
-): Promise<{ request: MaintenanceRequest; statusChanged: boolean } | null> {
+): Promise<RequestUpdateResult | null> {
   const { db, associationId } = await getTenantDb();
 
   const before = await db.maintenanceRequest.findFirst({
@@ -388,31 +425,52 @@ export async function updateMaintenanceRequest(
   });
   if (!before) return null;
 
-  await db.maintenanceRequest.updateMany({
-    where: { id },
-    data: { status: input.status, assignedTo: input.assignedTo.trim() },
-  });
-
-  const body = input.note.trim();
   const statusChanged = before.status !== input.status;
-  if (body || statusChanged) {
-    await db.maintenanceEvent.create({
+  const events: { kind: MaintenanceEventKind; body: string; visible: boolean }[] = [
+    { kind: "decision" as const, body: input.decision.trim(), visible: input.decisionVisible },
+    { kind: "reply" as const, body: input.reply.trim(), visible: true },
+    { kind: "note" as const, body: input.note.trim(), visible: false },
+  ].filter((e) => e.body);
+  if (events.length === 0 && statusChanged) {
+    events.push({ kind: "note", body: "", visible: false });
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.maintenanceRequest.updateMany({
+      where: { id },
       data: {
-        associationId,
-        requestId: id,
-        body,
-        statusFrom: statusChanged ? before.status : null,
-        statusTo: statusChanged ? input.status : null,
-        author: input.author.trim(),
+        status: input.status,
+        assignedTo: input.assignedTo.trim(),
       },
     });
-  }
+    for (const [index, event] of events.entries()) {
+      const first = index === 0 && statusChanged;
+      await tx.maintenanceEvent.create({
+        data: {
+          associationId,
+          requestId: id,
+          kind: event.kind,
+          body: event.body,
+          visibleToMember: event.visible,
+          statusFrom: first ? before.status : null,
+          statusTo: first ? input.status : null,
+          author: input.author.trim(),
+        },
+      });
+    }
+  });
 
   const row = await db.maintenanceRequest.findFirst({
     where: { id },
     include: { category: true, events: { orderBy: { createdAt: "asc" } } },
   });
-  return row ? { request: toRequest(row), statusChanged } : null;
+  return row
+    ? {
+        request: toRequest(row),
+        statusChanged,
+        messageToMember: events.some((e) => e.visible && e.body !== ""),
+      }
+    : null;
 }
 
 
@@ -422,14 +480,45 @@ export async function updateMaintenanceRequest(
 // ---------------------------------------------------------------------------
 
 /**
- * Bara statusändringar. Noteringarna och vem som skrev dem är styrelsens
- * interna och hämtas inte ens – då kan de inte råka följa med ut.
+ * Statusändringar och det styrelsen valt att visa. Vem som skrev något hämtas
+ * inte ens, och texten i en statusrad som är en intern notering sorteras bort i
+ * toMemberMessages innan något lämnar servern.
  */
-const statusEvents = {
-  where: { statusTo: { not: null } },
-  orderBy: { createdAt: "asc" },
-  select: { statusTo: true, createdAt: true },
-} as const;
+const memberEvents = {
+  where: { OR: [{ statusTo: { not: null } }, { visibleToMember: true }] },
+  orderBy: { createdAt: "asc" as const },
+  select: {
+    id: true,
+    kind: true,
+    body: true,
+    visibleToMember: true,
+    statusTo: true,
+    createdAt: true,
+  },
+} satisfies Prisma.MaintenanceRequest$eventsArgs;
+
+/** Svar och synliga beslut, äldst först. Interna noteringar följer aldrig med. */
+function toMemberMessages(
+  events: {
+    id: string;
+    kind: MaintenanceEventKind;
+    body: string;
+    visibleToMember: boolean;
+    createdAt: Date;
+  }[],
+): MemberMaintenanceMessage[] {
+  const messages: MemberMaintenanceMessage[] = [];
+  for (const e of events) {
+    if (!e.visibleToMember || !e.body || e.kind === "note") continue;
+    messages.push({
+      id: e.id,
+      kind: e.kind,
+      body: e.body,
+      createdAt: e.createdAt.toISOString(),
+    });
+  }
+  return messages;
+}
 
 /** Medlemmens felanmälningar, nyast först – aktiva och åtgärdade. */
 export async function getMemberMaintenanceRequests(
@@ -441,13 +530,14 @@ export async function getMemberMaintenanceRequests(
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
+      number: true,
       location: true,
       description: true,
       status: true,
       createdAt: true,
       memberSeenAt: true,
       category: { select: { name: true } },
-      events: statusEvents,
+      events: memberEvents,
     },
   });
 
@@ -459,16 +549,19 @@ export async function getMemberMaintenanceRequests(
     for (const e of r.events) {
       if (e.statusTo) statusDates[e.statusTo] = e.createdAt.toISOString();
     }
+    // Både en ny status och ett nytt svar räknas som en uppdatering.
     const lastChange = r.events.at(-1)?.createdAt ?? null;
 
     return {
       id: r.id,
+      number: r.number,
       categoryName: r.category.name,
       location: r.location,
       description: r.description,
       status: r.status,
       createdAt: r.createdAt.toISOString(),
       statusDates,
+      messages: toMemberMessages(r.events),
       hasUpdate: hasStatusUpdate(lastChange, r.memberSeenAt, r.createdAt),
     };
   });
@@ -486,7 +579,7 @@ export async function getMemberMaintenanceSummary(
       createdAt: true,
       memberSeenAt: true,
       events: {
-        where: { statusTo: { not: null } },
+        where: { OR: [{ statusTo: { not: null } }, { visibleToMember: true }] },
         orderBy: { createdAt: "desc" },
         take: 1,
         select: { createdAt: true },

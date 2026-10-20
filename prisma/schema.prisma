@@ -54,7 +54,20 @@ enum DocumentVisibility {
 enum MaintenanceStatus {
   ny
   pagar
+  /// Väntar på offert, leverantör eller material. Lades till efter de andra –
+  /// ordningen i flödet styrs av MAINTENANCE_STATUSES, inte av enumen.
+  vantar
   atgardad
+}
+
+/// Vad en händelse i ett ärendes historik är.
+enum MaintenanceEventKind {
+  /// Intern notering – syns bara för styrelsen.
+  note
+  /// Svar till medlemmen – syns alltid på Mina sidor.
+  reply
+  /// Styrelsens beslut. Syns för medlemmen bara om visibleToMember är satt.
+  decision
 }
 
 enum ListingStatus {
@@ -412,6 +425,12 @@ model MaintenanceEvent {
 
   /// Fritext. Tom när händelsen bara är en statusändring.
   body       String             @default("")
+  /// Gamla rader blir interna noteringar – de skrevs med texten "Syns bara
+  /// för styrelsen".
+  kind            MaintenanceEventKind @default(note)
+  /// Visas texten för medlemmen på Mina sidor? Alltid för svar, aldrig för
+  /// noteringar, och för beslut när styrelsen kryssat i det.
+  visibleToMember Boolean              @default(false)
   /// Satta när status ändrades i samma sparning.
   statusFrom MaintenanceStatus?
   statusTo   MaintenanceStatus?
@@ -445,8 +464,16 @@ model MaintenanceRequest {
   status      MaintenanceStatus @default(ny)
   createdAt   DateTime          @default(now())
 
+  /// Löpnummer per förening (#14), att hänvisa till i protokoll och samtal.
+  /// Null bara för ärenden från före numreringen, tills de numrerats.
+  number Int?
+
   /// Vem som ska utföra jobbet. Nuvarande läge, inte historik.
   assignedTo String @default("")
+
+  /// Används inte längre (uppföljningsdatumet togs bort ur admin, ingen
+  /// påminnelse skickades). Kvar så att ingen db push behövs; kan tas bort.
+  followUpAt DateTime?
 
   /// Medlemmen som anmälde, om hen var inloggad. Sätts från sessionen, aldrig
   /// från formuläret. Styr märket på Mina sidor och vem som aviseras när
@@ -461,8 +488,10 @@ model MaintenanceRequest {
 
   events MaintenanceEvent[]
 
+  @@unique([associationId, number])
   @@index([associationId, status])
   @@index([associationId, memberId])
+  @@index([associationId, followUpAt])
 }
 
 /// Redigerbart sidinnehåll (startsida + Om föreningen). En rad per förening.

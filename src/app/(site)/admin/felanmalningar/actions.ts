@@ -16,10 +16,11 @@ import { notifyMaintenanceStatusChanged } from "@/lib/email";
 import type { MaintenanceRequest, MaintenanceStatus } from "@/lib/types";
 import type { FormState } from "@/lib/form";
 
-const valid: MaintenanceStatus[] = ["ny", "pagar", "atgardad"];
+const valid: MaintenanceStatus[] = ["ny", "pagar", "vantar", "atgardad"];
 
 function revalidate() {
   revalidatePath("/admin/felanmalningar");
+  revalidatePath("/admin/felanmalningar/mote");
   revalidatePath("/admin");
   revalidatePath("/felanmalan");
   revalidatePath("/kontakt");
@@ -53,7 +54,10 @@ async function notifyReporter(request: MaintenanceRequest): Promise<boolean> {
   }
 }
 
-/** Sparar status, tilldelning och notering från ärendemodalen. */
+/**
+ * Sparar ett ärende – från ärendemodalen och från mötesläget, som skickar
+ * samma fält. Beslut, svar och notering blir var sin händelse i historiken.
+ */
 export async function updateRequestAction(
   _prev: FormState,
   fd: FormData,
@@ -68,6 +72,9 @@ export async function updateRequestAction(
   const updated = await updateMaintenanceRequest(id, {
     status,
     assignedTo: String(fd.get("assignedTo") ?? ""),
+    decision: String(fd.get("decision") ?? ""),
+    decisionVisible: fd.get("decisionVisible") === "on",
+    reply: String(fd.get("reply") ?? ""),
     note: String(fd.get("note") ?? ""),
     author: admin.fullName,
   });
@@ -76,11 +83,18 @@ export async function updateRequestAction(
   const notified =
     updated.statusChanged && (await notifyReporter(updated.request));
   revalidate();
-  return {
-    success: notified
-      ? "Ärendet sparat. Medlemmen har fått besked om den nya statusen."
-      : "Ärendet sparat.",
-  };
+
+  const parts = ["Ärendet sparat."];
+  if (updated.messageToMember) {
+    parts.push(
+      updated.request.memberId
+        ? "Medlemmen ser svaret på Mina sidor."
+        : "Anmälaren är inte inloggad medlem och ser inte svaret här – kopiera mejlet och skicka det.",
+    );
+  } else if (notified) {
+    parts.push("Medlemmen har fått besked om den nya statusen.");
+  }
+  return { success: parts.join(" ") };
 }
 
 // ---------------------------------------------------------------------------

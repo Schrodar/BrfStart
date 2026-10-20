@@ -26,7 +26,14 @@ const adminNav: SubNavItem[] = [
       { href: "/admin/innehall", label: "Innehåll" },
     ],
   },
-  { href: "/admin/felanmalningar", label: "Felanmälningar" },
+  {
+    href: "/admin/felanmalningar",
+    label: "Felanmälningar",
+    children: [
+      { href: "/admin/felanmalningar", label: "Ärenden" },
+      { href: "/admin/felanmalningar/mote", label: "Mötesläge" },
+    ],
+  },
   {
     href: "/admin/lagenheter",
     label: "Fastigheten",

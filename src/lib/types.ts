@@ -211,7 +211,10 @@ export interface MaintenanceCategory extends MaintenanceCategoryOption {
   contractorInfo: string;
 }
 
-export type MaintenanceStatus = "ny" | "pagar" | "atgardad";
+export type MaintenanceStatus = "ny" | "pagar" | "vantar" | "atgardad";
+
+/** note = intern, reply = svar till medlemmen, decision = styrelsens beslut. */
+export type MaintenanceEventKind = "note" | "reply" | "decision";
 
 /** Redigerbara texter och nummer på felanmälningssidan. */
 export interface MaintenanceSettings {
@@ -228,6 +231,9 @@ export interface MaintenanceEvent {
   id: string;
   /** Tom när händelsen bara är en statusändring. */
   body: string;
+  kind: MaintenanceEventKind;
+  /** Syns texten för medlemmen på Mina sidor? */
+  visibleToMember: boolean;
   statusFrom: MaintenanceStatus | null;
   statusTo: MaintenanceStatus | null;
   author: string;
@@ -237,6 +243,8 @@ export interface MaintenanceEvent {
 /** Felanmälan från boende/besökare. */
 export interface MaintenanceRequest {
   id: string;
+  /** Löpnummer per förening (#14). null för gamla ärenden som inte numrerats. */
+  number: number | null;
   /** Valfritt – anmälaren behöver inte uppge namn. */
   name: string;
   /** Minst en av email/phone är ifylld. */
@@ -249,7 +257,7 @@ export interface MaintenanceRequest {
   assignedTo: string;
   /** Medlemmen som anmälde inloggad. null = besökare eller utloggad anmälare. */
   memberId: string | null;
-  /** Ärendets historik, äldst först. Visas aldrig för anmälaren. */
+  /** Ärendets historik, äldst först. Anmälaren ser bara det som är synligt för medlemmen. */
   events: MaintenanceEvent[];
   /** Var felet finns, t.ex. "Tvättstuga plan 1". */
   location: string;
@@ -267,6 +275,7 @@ export interface MaintenanceRequest {
  */
 export interface MemberMaintenanceRequest {
   id: string;
+  number: number | null;
   categoryName: string;
   location: string;
   description: string;
@@ -274,8 +283,18 @@ export interface MemberMaintenanceRequest {
   createdAt: string;
   /** När ärendet senast fick respektive status (ISO). "ny" = när det skickades in. */
   statusDates: Partial<Record<MaintenanceStatus, string>>;
-  /** Statusen har ändrats sedan medlemmen senast tittade. */
+  /** Svar och beslut som styrelsen valt att visa, äldst först. */
+  messages: MemberMaintenanceMessage[];
+  /** Status eller svar har kommit sedan medlemmen senast tittade. */
   hasUpdate: boolean;
+}
+
+/** Något styrelsen skrivit till medlemmen i ett ärende. Ingen författare – styrelsen svarar som styrelse. */
+export interface MemberMaintenanceMessage {
+  id: string;
+  kind: "reply" | "decision";
+  body: string;
+  createdAt: string;
 }
 
 /** Underlaget för märket i medlemsmenyn. */

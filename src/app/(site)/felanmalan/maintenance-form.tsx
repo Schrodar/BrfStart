@@ -108,24 +108,24 @@ export function MaintenanceForm({
         </p>
       ) : null}
 
-      <p className="text-sm text-muted">
-        Vi behöver kunna nå dig om ärendet – fyll i e-post eller telefon.
-      </p>
-
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="E-post" htmlFor="email" hint="E-post eller telefon krävs.">
+        <Field
+          label="E-post"
+          htmlFor="email"
+          required
+          hint="Styrelsen svarar dig hit om ärendet."
+        >
           <Input
             ref={emailRef}
             id="email"
             name="email"
             type="email"
             autoComplete="email"
+            required
           />
         </Field>
-        <Field label="Telefon" htmlFor="phone" hint="E-post eller telefon krävs.">
-          <Input id="phone" name="phone" autoComplete="tel" />
-        </Field>
         <Field label="Namn" htmlFor="name" hint="Valfritt.">
+
           <Input ref={nameRef} id="name" name="name" autoComplete="name" />
         </Field>
       </div>

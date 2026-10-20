@@ -89,6 +89,8 @@ const statusLead: Record<MaintenanceStatus, string> = {
   ny: "Din felanmälan har fått status Inskickat igen och väntar på att styrelsen tittar på den.",
   pagar:
     "Styrelsen har behandlat din felanmälan och arbetar nu med att få felet åtgärdat.",
+  vantar:
+    "Din felanmälan väntar på åtgärd – till exempel en offert, en leverantör eller material. Styrelsen följer upp den.",
   atgardad: "Felet är åtgärdat. Tack för att du anmälde det!",
 };
 

@@ -1,4 +1,4 @@
-import type { MaintenanceStatus } from "@/lib/types";
+import type { MaintenanceEventKind, MaintenanceStatus } from "@/lib/types";
 
 /**
  * Felanmälans statusar, i den ordning ett ärende går igenom dem.
@@ -13,6 +13,7 @@ export const MAINTENANCE_STATUSES: { value: MaintenanceStatus; label: string }[]
   [
     { value: "ny", label: "Inskickat" },
     { value: "pagar", label: "Behandlat av styrelsen" },
+    { value: "vantar", label: "Väntar på åtgärd" },
     { value: "atgardad", label: "Åtgärdat" },
   ];
 
@@ -24,6 +25,7 @@ export function maintenanceStatusLabel(status: MaintenanceStatus): string {
 export const MAINTENANCE_STATUS_TONE = {
   ny: "warning",
   pagar: "brand",
+  vantar: "neutral",
   atgardad: "success",
 } as const satisfies Record<MaintenanceStatus, string>;
 
@@ -52,3 +54,15 @@ export function hasStatusUpdate(
     new Date(seenAt ?? createdAt).getTime()
   );
 }
+
+/** Ärendets nummer som det skrivs i listor och protokoll: "#14". */
+export function maintenanceNumberLabel(number: number | null): string {
+  return number == null ? "" : `#${number}`;
+}
+
+/** Vad en händelse kallas i historiken. */
+export const MAINTENANCE_EVENT_KIND_LABEL: Record<MaintenanceEventKind, string> = {
+  note: "Intern notering",
+  reply: "Svar till medlemmen",
+  decision: "Beslut",
+};

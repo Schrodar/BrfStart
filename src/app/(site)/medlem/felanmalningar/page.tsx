@@ -20,6 +20,12 @@ export default async function MemberMaintenancePage() {
     stepDates: Object.fromEntries(
       Object.entries(r.statusDates).map(([status, iso]) => [status, formatDate(iso)]),
     ),
+    messageViews: r.messages.map((m) => ({
+      id: m.id,
+      kind: m.kind,
+      body: m.body,
+      dateLabel: formatDate(m.createdAt),
+    })),
   }));
 
   return (
@@ -29,7 +35,7 @@ export default async function MemberMaintenancePage() {
           <h2 className="text-lg font-semibold">Mina felanmälningar</h2>
           <p className="mt-1 max-w-xl text-sm text-muted">
             Ärenden du anmält medan du var inloggad. Här ser du hur långt
-            styrelsen har kommit, och du får besked när statusen ändras.
+            styrelsen har kommit och vad styrelsen svarat dig.
           </p>
         </div>
         <Link href="/felanmalan" className={buttonClasses("secondary", "sm")}>

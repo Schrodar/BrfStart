@@ -9,24 +9,25 @@ import type {
 } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
 import {
-  MAINTENANCE_STATUSES,
+  MAINTENANCE_EVENT_KIND_LABEL,
   MAINTENANCE_STATUS_TONE as statusTone,
+  maintenanceNumberLabel,
   maintenanceStatusLabel as statusLabel,
 } from "@/lib/maintenance-status";
+import { formatMaintenanceSummary } from "@/lib/maintenance-summary";
+import { CopyButton } from "@/components/maintenance/copy-button";
 import {
   Badge,
   Card,
   CardBody,
   EmptyState,
-  Field,
   FormError,
   FormSuccess,
-  Input,
-  Select,
   SubmitButton,
-  Textarea,
 } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import { updateRequestAction } from "./actions";
+import { ReplyEmailButton, RequestFields } from "./request-fields";
 
 /**
  * Listan över ärenden. Ett klick öppnar ärendet i en modal där styrelsen kan
@@ -38,15 +39,17 @@ import { updateRequestAction } from "./actions";
 export function RequestList({
   requests,
   categories,
+  emptyTitle = "Inga felanmälningar",
 }: {
   requests: MaintenanceRequest[];
   categories: MaintenanceCategory[];
+  emptyTitle?: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = requests.find((r) => r.id === openId) ?? null;
 
   if (requests.length === 0) {
-    return <EmptyState title="Inga felanmälningar" />;
+    return <EmptyState title={emptyTitle} />;
   }
 
   return (
@@ -62,6 +65,11 @@ export function RequestList({
               <Badge tone={statusTone[r.status]}>{statusLabel(r.status)}</Badge>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium text-foreground">
+                  {r.number != null ? (
+                    <span className="mr-1.5 tabular-nums text-muted">
+                      {maintenanceNumberLabel(r.number)}
+                    </span>
+                  ) : null}
                   {r.categoryName} · {r.location}
                 </span>
                 <span className="mt-0.5 block truncate text-xs text-muted">
@@ -99,6 +107,7 @@ function RequestModal({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, action] = useActionState<FormState, FormData>(
     updateRequestAction,
     {},
@@ -107,6 +116,12 @@ function RequestModal({
   useEffect(() => {
     ref.current?.showModal();
   }, []);
+
+  // Efter en sparning ligger texterna i historiken – töm fälten, så att de
+  // inte sparas en gång till av misstag.
+  useEffect(() => {
+    if (state.success) formRef.current?.reset();
+  }, [state]);
 
   const hasContractor =
     category &&
@@ -128,7 +143,12 @@ function RequestModal({
             <Badge tone={statusTone[request.status]}>
               {statusLabel(request.status)}
             </Badge>
-            <span className="font-semibold">{request.categoryName}</span>
+            <span className="font-semibold">
+              {request.number != null
+                ? `${maintenanceNumberLabel(request.number)} `
+                : ""}
+              {request.categoryName}
+            </span>
           </div>
           <p className="mt-1 text-sm text-muted">
             {formatDateTime(request.createdAt)} · {request.location}
@@ -148,8 +168,7 @@ function RequestModal({
         Formuläret spänner över både den rullande mitten och den fasta foten,
         så att spara-knappen ligger kvar i vy medan innehållet rullar.
       */}
-      <form action={action} className="flex min-h-0 flex-1 flex-col">
-        <input type="hidden" name="id" value={request.id} />
+      <form ref={formRef} action={action} className="flex min-h-0 flex-1 flex-col">
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
           <p className="whitespace-pre-wrap text-sm text-foreground">
@@ -223,69 +242,22 @@ function RequestModal({
           {state.error ? <FormError>{state.error}</FormError> : null}
           {state.success ? <FormSuccess>{state.success}</FormSuccess> : null}
 
-          <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
-            <Field
-              label="Status"
-              htmlFor={`status-${request.id}`}
-              hint={
-                request.memberId
-                  ? "Anmälaren är inloggad medlem och får besked när du ändrar status."
-                  : undefined
-              }
-            >
-              <Select
-                id={`status-${request.id}`}
-                name="status"
-                defaultValue={request.status}
-              >
-                {MAINTENANCE_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field
-              label="Vem ska utföra jobbet?"
-              htmlFor={`assignedTo-${request.id}`}
-              hint={
-                category?.contractorName
-                  ? `Förslag: ${category.contractorName}`
-                  : "Namn på person eller firma."
-              }
-            >
-              <Input
-                id={`assignedTo-${request.id}`}
-                name="assignedTo"
-                defaultValue={request.assignedTo}
-                placeholder={category?.contractorName || undefined}
-              />
-            </Field>
+          <div className="space-y-4 border-t border-border pt-4">
+            <RequestFields request={request} category={category} />
           </div>
 
           <Timeline events={request.events} />
-
-          <Field
-            label="Ny notering"
-            htmlFor={`note-${request.id}`}
-            hint="Läggs till överst i historiken. Syns bara för styrelsen."
-          >
-            <Textarea
-              id={`note-${request.id}`}
-              name="note"
-              rows={3}
-              placeholder="Fastighetsansvarig kontaktade Kone 2026-09-08, de återkommer via e-post."
-            />
-          </Field>
         </div>
 
         {/* Fast fot – knappen ligger aldrig under rullningen. */}
-        <div className="flex shrink-0 items-center gap-3 border-t border-border bg-surface px-6 py-4">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-border bg-surface px-6 py-4">
           <SubmitButton>Spara ärendet</SubmitButton>
+          <CopyButton getText={() => formatMaintenanceSummary(request)} />
+          <ReplyEmailButton request={request} />
           <button
             type="button"
             onClick={() => ref.current?.close()}
-            className="text-sm font-medium text-muted hover:text-foreground"
+            className="ml-auto text-sm font-medium text-muted hover:text-foreground"
           >
             Stäng
           </button>
@@ -300,13 +272,19 @@ function RequestModal({
  * notering går inte att ändra i efterhand, vilket är hela poängen med att ha
  * en logg i stället för ett fält.
  */
-function Timeline({ events }: { events: MaintenanceEvent[] }) {
+const KIND_TONE = {
+  note: "text-muted",
+  reply: "text-brand-700",
+  decision: "text-amber-800",
+} as const;
+
+export function Timeline({ events }: { events: MaintenanceEvent[] }) {
   if (events.length === 0) {
     return (
       <div className="border-t border-border pt-4">
         <h4 className="text-sm font-semibold">Historik</h4>
         <p className="mt-1 text-sm text-muted">
-          Inget har hänt med ärendet ännu. Din första notering hamnar här.
+          Inget har hänt med ärendet ännu. Beslut, svar och noteringar hamnar här.
         </p>
       </div>
     );
@@ -334,9 +312,14 @@ function Timeline({ events }: { events: MaintenanceEvent[] }) {
               </p>
             ) : null}
             {e.body ? (
-              <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                {e.body}
-              </p>
+              <>
+                <p className={cn("mt-0.5 text-xs font-medium", KIND_TONE[e.kind])}>
+                  {MAINTENANCE_EVENT_KIND_LABEL[e.kind]}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                  {e.body}
+                </p>
+              </>
             ) : null}
           </li>
         ))}

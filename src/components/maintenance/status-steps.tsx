@@ -21,7 +21,8 @@ function CheckIcon() {
 }
 
 /**
- * Var ärendet befinner sig: Inskickat → Behandlat av styrelsen → Åtgärdat.
+ * Var ärendet befinner sig: Inskickat → Behandlat av styrelsen → Väntar på
+ * åtgärd → Åtgärdat.
  *
  * Steg före den nuvarande statusen räknas som klara även om styrelsen hoppat
  * över något av dem. Datum visas bara för steg som faktiskt nåtts – har ett
@@ -39,7 +40,7 @@ export function StatusSteps({
   const finished = status === "atgardad";
 
   return (
-    <ol aria-label="Ärendets förlopp" className="grid grid-cols-3">
+    <ol aria-label="Ärendets förlopp" className="grid grid-cols-4">
       {MAINTENANCE_STATUSES.map((step, index) => {
         const done = index < current || finished;
         const isCurrent = index === current && !finished;
