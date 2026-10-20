@@ -67,6 +67,46 @@ function Icon({ direction }: { direction: "in" | "out" }) {
   );
 }
 
+/**
+ * Genväg till adminpanelen, till vänster om Logga ut. Visas bara för godkända
+ * administratörer – villkoret ligger hos anroparen (site-header), samma som i
+ * requireAdmin(). Panelen kontrollerar ändå behörigheten själv på servern.
+ */
+export function AdminButton({
+  variant = "default",
+}: {
+  variant?: AuthButtonVariant;
+}) {
+  return (
+    <TransitionLink href="/admin" className={buttonClass(variant)}>
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className="shrink-0"
+      >
+        {/* Reglage – tre skjutreglage. */}
+        <path d="M4 6h10" />
+        <path d="M18 6h2" />
+        <circle cx="16" cy="6" r="2" />
+        <path d="M4 12h2" />
+        <path d="M10 12h10" />
+        <circle cx="8" cy="12" r="2" />
+        <path d="M4 18h12" />
+        <path d="M20 18h0" />
+        <circle cx="18" cy="18" r="2" />
+      </svg>
+      <span className="sr-only sm:not-sr-only">Administration</span>
+    </TransitionLink>
+  );
+}
+
 export function AuthButton({
   signedIn,
   variant = "default",

@@ -8,7 +8,14 @@ const adminNav: SubNavItem[] = [
   { href: "/admin", label: "Översikt" },
   { href: "/admin/nyheter", label: "Nyheter" },
   { href: "/admin/dokument", label: "Dokument" },
-  { href: "/admin/styrelse", label: "Styrelse" },
+  {
+    href: "/admin/styrelse",
+    label: "Styrelse",
+    children: [
+      { href: "/admin/styrelse", label: "Styrelse och grupper" },
+      { href: "/admin/medlemmar", label: "Användare & behörigheter" },
+    ],
+  },
   {
     href: "/admin/foreningsinfo",
     label: "Föreningsinfo",
@@ -16,11 +23,10 @@ const adminNav: SubNavItem[] = [
       { href: "/admin/foreningsinfo", label: "Fakta" },
       { href: "/admin/foreningsinfo/kontakt", label: "Namn och kontakt" },
       { href: "/admin/foreningsinfo/ekonomi", label: "Ekonomi" },
+      { href: "/admin/innehall", label: "Innehåll" },
     ],
   },
-  { href: "/admin/innehall", label: "Innehåll" },
   { href: "/admin/felanmalningar", label: "Felanmälningar" },
-  { href: "/admin/medlemmar", label: "Medlemmar" },
   {
     href: "/admin/lagenheter",
     label: "Fastigheten",
@@ -30,6 +36,7 @@ const adminNav: SubNavItem[] = [
       { href: "/admin/tavlor", label: "Trapphustavlor" },
     ],
   },
+  { href: "/admin/supportlogg", label: "Supportlogg" },
 ];
 
 export default async function AdminLayout({

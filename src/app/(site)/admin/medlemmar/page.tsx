@@ -104,8 +104,8 @@ export default async function AdminMembersPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Medlemmar"
-        description="Bjud in nya, godkänn registreringar och hantera behörigheter."
+        title="Användare & behörigheter"
+        description="Bjud in nya användare, godkänn registreringar och styr vem som har tillgång till de inloggade delarna av hemsidan."
       />
 
       <Card>

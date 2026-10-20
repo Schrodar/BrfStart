@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { TransitionLink } from "@/components/page-transition/TransitionLink";
 import { NavDrawer } from "@/components/layout/nav-drawer";
-import { AuthButton } from "@/components/layout/auth-button";
+import { AdminButton, AuthButton } from "@/components/layout/auth-button";
 import { AssociationLogo } from "@/components/association";
 import { siteConfig } from "@/config/siteConfig";
 import type { AssociationProfile } from "@/lib/types";
@@ -29,6 +29,11 @@ export function SiteHeader({
   // Sidorna är statiska, så inloggningen läses här i webbläsaren.
   const { signedIn, member } = useCurrentMember();
   const isHome = pathname === "/";
+  // Samma villkor som requireAdmin(): roll admin och godkänt konto.
+  const isAdmin =
+    signedIn === true &&
+    member?.role === "admin" &&
+    member.status === "approved";
   const shortName = shortNameOf(association);
   const { hero } = siteConfig;
 
@@ -44,6 +49,7 @@ export function SiteHeader({
           </TransitionLink>
 
           <div className="flex items-center gap-2">
+            {isAdmin ? <AdminButton variant="default" /> : null}
             <AuthButton signedIn={signedIn} variant="default" />
             {/* NavDrawer visar en platshållare här. Själva knappen portaleras till body. */}
             <NavDrawer member={member} association={association} variant="default" />
@@ -86,6 +92,7 @@ export function SiteHeader({
           </TransitionLink>
 
           <div className="flex items-center gap-2">
+            {isAdmin ? <AdminButton variant="hero" /> : null}
             <AuthButton signedIn={signedIn} variant="hero" />
             {/* NavDrawer visar en platshållare här. Själva knappen portaleras till body. */}
             <NavDrawer member={member} association={association} variant="hero" />

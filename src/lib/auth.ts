@@ -20,6 +20,7 @@ import {
   SUPPORT_COOKIE,
   type ActiveSupportSession,
 } from "@/lib/data/support";
+import { markSupportRequest } from "@/lib/support-log";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** Inloggad användare (Supabase-session + Member-profil). Null om utloggad. */
@@ -93,7 +94,15 @@ export async function requireAdmin(): Promise<CurrentUser> {
   if (user?.role === "admin" && user.status === "approved") return user;
 
   const support = await getSupportSession();
-  if (support) return supportUser(support);
+  if (support) {
+    // Från och med nu loggas requestens skrivningar i supportloggen.
+    markSupportRequest({
+      sessionId: support.id,
+      platformAdminId: support.platformAdminId,
+      adminEmail: support.adminEmail,
+    });
+    return supportUser(support);
+  }
 
   if (!user) redirect("/logga-in?next=/admin");
   redirect("/medlem");

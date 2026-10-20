@@ -6,7 +6,7 @@ import type { Role } from "@/lib/types";
 
 /**
  * Inbjudningar till föreningen. De skapas i JnM-panelen eller av styrelsen
- * (Admin → Medlemmar) och löses in på /aktivera.
+ * (Admin → Styrelse → Användare & behörigheter) och löses in på /aktivera.
  *
  * En inbjudan ger ingen åtkomst i sig. Member-raden skapas först vid inlösen,
  * när personen har valt eller bekräftat sitt lösenord – annars skulle en i
@@ -79,7 +79,7 @@ export async function createInvitation(
   if (existing) {
     return {
       ok: false,
-      error: `${email} finns redan i föreningen. Ändra roll eller godkänn under Medlemmar i stället.`,
+      error: `${email} finns redan i föreningen. Ändra roll eller godkänn under Användare & behörigheter i stället.`,
     };
   }
 

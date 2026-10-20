@@ -62,7 +62,7 @@ npm run dev
 
 Inloggning sker med **Supabase Auth** (e-post + lösenord). Nya boende registrerar
 sig via **Registrera** och får status "väntar på godkännande" tills styrelsen
-godkänner dem under **Admin → Medlemmar**. Registreringen skapar auth-användaren
+godkänner dem under **Admin → Styrelse → Användare & behörigheter**. Registreringen skapar auth-användaren
 via Supabase Admin-API med bekräftad e-post – ingen e-postbekräftelse behövs
 eftersom styrelsens godkännande är grinden.
 

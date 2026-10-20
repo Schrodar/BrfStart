@@ -1,5 +1,11 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import {
+  currentSupportActor,
+  fetchRowBefore,
+  isLoggedWrite,
+  recordSupportChange,
+} from "@/lib/support-log";
 
 /**
  * =============================================================================
@@ -113,10 +119,26 @@ function buildTenantClient(associationId: string) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const a: any = args ?? {};
             a.where = { ...(a.where ?? {}), associationId };
-            return query(a);
           }
           // create/createMany: associationId sätts explicit i datalagret.
-          return query(args);
+
+          // Under ett supportläge loggas varje skrivning för styrelsen. Utan
+          // supportläge kostar det här ingenting – ingen databasfråga.
+          const actor = currentSupportActor();
+          if (!actor || !isLoggedWrite(model, operation, args)) {
+            return query(args);
+          }
+          const before = await fetchRowBefore(model, operation, args, associationId);
+          const result = await query(args);
+          await recordSupportChange({
+            actor,
+            associationId,
+            model,
+            operation,
+            before,
+            result,
+          });
+          return result;
         },
       },
     },

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { prisma } from "@/lib/prisma";
 import { getTenantDb } from "@/lib/tenant";
 
 /**
@@ -22,6 +23,8 @@ const digest = (value: string) =>
 
 export interface ActiveSupportSession {
   id: string;
+  /** Vem i plattformen – loggraderna i supportloggen knyts hit. */
+  platformAdminId: string;
   adminName: string;
   adminEmail: string;
   /** ISO-sträng. Visas i bannern så att det syns när åtkomsten upphör. */
@@ -79,12 +82,19 @@ export async function getActiveSupportSession(
       endedAt: null,
       expiresAt: { gt: new Date() },
     },
-    select: { id: true, adminName: true, adminEmail: true, expiresAt: true },
+    select: {
+      id: true,
+      platformAdminId: true,
+      adminName: true,
+      adminEmail: true,
+      expiresAt: true,
+    },
   });
   if (!session) return null;
 
   return {
     id: session.id,
+    platformAdminId: session.platformAdminId,
     adminName: session.adminName,
     adminEmail: session.adminEmail,
     expiresAt: session.expiresAt.toISOString(),
@@ -98,5 +108,82 @@ export async function endSupportSession(cookieValue: string): Promise<void> {
   await db.supportSession.updateMany({
     where: { cookieHash: digest(cookieValue), endedAt: null },
     data: { endedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Supportloggen (Admin → Supportlogg)
+// ---------------------------------------------------------------------------
+
+export type SupportLogStatus = "pagar" | "avslutad" | "utgangen" | "oanvand";
+
+export interface SupportLogEntry {
+  id: string;
+  adminName: string;
+  reason: string;
+  status: SupportLogStatus;
+  /** ISO-strängar. startedAt = när länken skapades, usedAt = när den öppnades. */
+  startedAt: string;
+  usedAt: string | null;
+  /** När åtkomsten upphörde eller upphör: avslutet, annars utgångstiden. */
+  endsAt: string;
+  changes: { id: string; at: string; summary: string }[];
+}
+
+/**
+ * De senaste supportsessionerna med allt som ändrades under dem. Ändringarna
+ * skrivs av src/lib/support-log.ts till AuditEvent, som inte är tenant-scopad –
+ * därav bas-klienten med explicit associationId.
+ */
+export async function getSupportLog(limit = 20): Promise<SupportLogEntry[]> {
+  const { db, associationId } = await getTenantDb();
+  const sessions = await db.supportSession.findMany({
+    orderBy: { startedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      adminName: true,
+      reason: true,
+      startedAt: true,
+      usedAt: true,
+      expiresAt: true,
+      endedAt: true,
+    },
+  });
+  if (sessions.length === 0) return [];
+
+  const events = await prisma.auditEvent.findMany({
+    where: {
+      associationId,
+      action: "support.change",
+      target: { in: sessions.map((s) => s.id) },
+    },
+    orderBy: { at: "asc" },
+    select: { id: true, at: true, target: true, summary: true },
+  });
+
+  const now = Date.now();
+  return sessions.map((s) => {
+    // Oöppnad länk räknas som oanvänd oavsett om den hunnit gå ut – ingen
+    // har kommit åt något.
+    const status: SupportLogStatus = !s.usedAt
+      ? "oanvand"
+      : s.endedAt
+        ? "avslutad"
+        : s.expiresAt.getTime() <= now
+          ? "utgangen"
+          : "pagar";
+    return {
+      id: s.id,
+      adminName: s.adminName,
+      reason: s.reason,
+      status,
+      startedAt: s.startedAt.toISOString(),
+      usedAt: s.usedAt?.toISOString() ?? null,
+      endsAt: (s.endedAt ?? s.expiresAt).toISOString(),
+      changes: events
+        .filter((e) => e.target === s.id)
+        .map((e) => ({ id: e.id, at: e.at.toISOString(), summary: e.summary })),
+    };
   });
 }
