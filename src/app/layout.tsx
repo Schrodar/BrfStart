@@ -3,6 +3,7 @@ import { Fraunces, Manrope } from "next/font/google";
 import { siteConfig } from "@/config/siteConfig";
 import { getAssociationProfile } from "@/lib/data";
 import { shortNameOf } from "@/lib/utils";
+import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
 import "./globals.css";
 
 // Fraunces (rubriker i menyn) + Manrope (brödtext/länkar). Exponeras som
@@ -61,7 +62,11 @@ export default function RootLayout({
       className={`${fraunces.variable} ${manrope.variable}`}
       suppressHydrationWarning
     >
-      <body className="theme-site">{children}</body>
+      <body className="theme-site">
+        {children}
+        {/* Laddar om en flik som hamnat efter en ny deploy (src/lib/chunk-reload.ts). */}
+        <ChunkReloadGuard />
+      </body>
     </html>
   );
 }
