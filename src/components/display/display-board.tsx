@@ -19,8 +19,8 @@ import { LiveBoard } from "./live-board";
  * skripten, typsnitten och bilderna – så att en skärm som startar om utan nät
  * ändå visar tavlan direkt.
  *
- * Hämtningarna är glesa med flit (styrelsens val: varje timme eller en gång om
- * dagen), eftersom innehållet ändras sällan (se REFRESH_OPTIONS). Nattetid,
+ * Hämtningarna är glesa med flit (styrelsens val: var 15:e minut, varje timme
+ * eller en gång om dagen), eftersom innehållet ändras sällan (se REFRESH_OPTIONS). Nattetid,
  * när skärmen ändå är svart, hämtar den inte alls – den hämtar direkt när den
  * tänds igen.
  *

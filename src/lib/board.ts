@@ -52,9 +52,11 @@ export const BOARD_BUILD = process.env.NEXT_PUBLIC_BUILD_STAMP ?? "dev";
 /**
  * Hur ofta skärmarna får hämta nytt innehåll. Medvetet glest: anslagen ändras
  * sällan, och varje hämtning är en databasfråga på en server som delas med
- * andra föreningar.
+ * andra föreningar. 15 minuter är det tätaste – 96 hämtningar per skärm och
+ * dygn, några tiotal MB i månaden för en skärm på mobilt nät.
  */
 export const REFRESH_OPTIONS = [
+  { minutes: 15, label: "Var 15:e minut" },
   { minutes: 60, label: "Varje timme" },
   { minutes: 1440, label: "En gång om dagen" },
 ] as const;

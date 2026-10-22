@@ -119,8 +119,10 @@ senaste start.
 
 ## Så klarar tavlan nätavbrott
 
-- **Sidan:** tavlan hämtar nytt innehåll varje timme eller en gång om dagen,
-  enligt styrelsens val under Trapphustavlor → Inställningar. Den hämtar
+- **Sidan:** tavlan hämtar nytt innehåll var 15:e minut, varje timme eller en
+  gång om dagen, enligt styrelsens val under Trapphustavlor → Inställningar.
+  Även var 15:e minut blir bara några tiotal MB i månaden, så ett
+  mobilabonnemang på 500 MB räcker gott. Den hämtar
   ingenting nattetid, utan hämtar direkt när skärmen tänds igen. Om
   hämtningen misslyckas visar den det den redan har, utan något
   felmeddelande, och försöker igen efter 15 minuter.
@@ -141,8 +143,8 @@ senaste start.
 ## Skärmens status
 
 Admin → Trapphustavlor visar en status för varje skärm, och när den senast
-hörde av sig. Skärmen hör bara av sig när den hämtar (varje timme eller en
-gång om dagen, aldrig nattetid), så "Senast kontakt" kan vara flera timmar
+hörde av sig. Skärmen hör bara av sig när den hämtar (var 15:e minut, varje
+timme eller en gång om dagen, aldrig nattetid), så "Senast kontakt" kan vara flera timmar
 gammal på en skärm som fungerar.
 
 - **Igång:** skärmen har hämtat som väntat. Den får missa en hämtning, plus
