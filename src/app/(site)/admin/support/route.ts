@@ -28,8 +28,13 @@ export async function GET(request: Request) {
     });
   }
 
-  const response = NextResponse.redirect(new URL("/admin", request.url), {
-    headers: NO_REFERRER,
+  // Relativ Location. Bakom proxyn i Coolify är request.url serverns egen
+  // adress (0.0.0.0:3000), och en redirect dit når aldrig fram – medan
+  // länken redan är förbrukad. Webbläsaren löser upp /admin mot adressen den
+  // faktiskt anropade, alltså samma värd som cookien sätts på.
+  const response = new NextResponse(null, {
+    status: 307,
+    headers: { ...NO_REFERRER, Location: "/admin" },
   });
   response.cookies.set(SUPPORT_COOKIE, session.cookieValue, {
     httpOnly: true,
