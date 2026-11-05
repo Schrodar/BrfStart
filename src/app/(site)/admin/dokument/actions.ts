@@ -20,7 +20,7 @@ const schema = z.object({
     ["stadgar", "arsredovisning", "protokoll", "ordningsregler", "ovrigt"],
     { message: "Välj en kategori." },
   ),
-  visibility: z.enum(["public", "member"]),
+  visibility: z.enum(["public", "member", "board"]),
 });
 
 function revalidate() {

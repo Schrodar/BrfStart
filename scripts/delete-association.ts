@@ -66,6 +66,19 @@ async function main() {
     buildings: await prisma.building.findMany({ where }),
     apartments: await prisma.apartment.findMany({ where }),
     apartmentPhotos: await prisma.apartmentPhoto.findMany({ where }),
+    memberInvitations: await prisma.memberInvitation.findMany({ where }),
+    displays: await prisma.display.findMany({ where }),
+    notices: await prisma.notice.findMany({ where }),
+    displaySettings: await prisma.displaySettings.findMany({ where }),
+    contacts: await prisma.contact.findMany({ where }),
+    contactCategories: await prisma.contactCategory.findMany({ where }),
+    boardMatters: await prisma.boardMatter.findMany({ where }),
+    boardMatterEntries: await prisma.boardMatterEntry.findMany({ where }),
+    meetings: await prisma.meeting.findMany({ where }),
+    meetingAttendees: await prisma.meetingAttendee.findMany({ where }),
+    agendaItems: await prisma.agendaItem.findMany({ where }),
+    protocolSignatures: await prisma.protocolSignature.findMany({ where }),
+    deviceTokens: await prisma.deviceToken.findMany({ where }),
   };
 
   // Filerna ligger under <associationId>/ i de delade bucketarna. Listan tas

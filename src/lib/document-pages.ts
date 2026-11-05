@@ -21,6 +21,8 @@ export function documentPlacements(
   category: DocumentCategory,
   visibility: DocumentVisibility,
 ): string[] {
+  // Styrelsens dokument syns bara i admin.
+  if (visibility === "board") return ["Admin → Dokument"];
   // Medlemmarnas dokumentsida visar alla dokument, publika som interna.
   if (visibility === "member") return ["Mina sidor → Dokument"];
   const pages = Object.values(DOCUMENT_PAGES)

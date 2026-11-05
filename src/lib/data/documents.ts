@@ -54,14 +54,20 @@ export async function getPublicDocuments(): Promise<DocumentItem[]> {
   return rows.map(toDocument);
 }
 
-/** Alla dokument – medlemmar ser både publika och interna. */
+/**
+ * Dokumenten på Mina sidor: publika och interna. Styrelsens egna (board) står
+ * medvetet utanför – de syns bara i admin.
+ */
 export async function getMemberDocuments(): Promise<DocumentItem[]> {
   const { db } = await getTenantDb();
-  const rows = await db.document.findMany({ orderBy: { uploadedAt: "desc" } });
+  const rows = await db.document.findMany({
+    where: { visibility: { in: ["public", "member"] } },
+    orderBy: { uploadedAt: "desc" },
+  });
   return rows.map(toDocument);
 }
 
-/** Alla dokument (admin). */
+/** Alla dokument, även styrelsens (admin). */
 export async function getAllDocuments(): Promise<DocumentItem[]> {
   const { db } = await getTenantDb();
   const rows = await db.document.findMany({ orderBy: { uploadedAt: "desc" } });

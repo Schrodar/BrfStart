@@ -49,6 +49,9 @@ enum DocumentCategory {
 enum DocumentVisibility {
   public
   member
+  /// Bara styrelsen (godkänd admin), t.ex. justerade styrelseprotokoll.
+  /// Syns aldrig på medlemmarnas dokumentsida.
+  board
 }
 
 enum MaintenanceStatus {
@@ -84,7 +87,9 @@ enum ListingStatus {
 /// Raden bär också föreningens identitet – namn, adress och kontaktuppgifter –
 /// som visas i header, footer och på kontaktsidorna. Styrelsen redigerar dem
 /// under Admin → Föreningsinfo → Namn och kontakt. Tom sträng = visas inte.
-/// Logotyp och färger hör till själva deployen och ligger kvar i koden.
+/// Webbens logotyp och färger hör till själva deployen och ligger kvar i
+/// koden. brandColor och logoPath används av styrelseappen, som är en och
+/// samma app för alla föreningar.
 model Association {
   id        String   @id @default(uuid())
   slug      String   @unique
@@ -104,6 +109,13 @@ model Association {
   propertyManagerName  String @default("")
   propertyManagerPhone String @default("")
   propertyManagerEmail String @default("")
+
+  /// Föreningens färg i styrelseappen, hex som "#315c4a". Tom = appens
+  /// standardfärg.
+  brandColor String  @default("")
+  /// Logotyp i styrelseappen, i den publika bucketen news-images:
+  /// <associationId>/profil/<uuid>.<ext>. Null = appen visar initialerna.
+  logoPath   String?
 
   members               Member[]
   news                  NewsPost[]
@@ -126,6 +138,15 @@ model Association {
   displays              Display[]
   notices               Notice[]
   displaySettings       DisplaySettings?
+  boardMatters          BoardMatter[]
+  boardMatterEntries    BoardMatterEntry[]
+  meetings              Meeting[]
+  meetingAttendees      MeetingAttendee[]
+  agendaItems           AgendaItem[]
+  protocolSignatures    ProtocolSignature[]
+  contacts              Contact[]
+  contactCategories     ContactCategory[]
+  deviceTokens          DeviceToken[]
 }
 
 // ---------------------------------------------------------------------------
@@ -280,6 +301,19 @@ model Member {
   /// Felanmälningar medlemmen gjort inloggad.
   maintenanceRequests MaintenanceRequest[]
 
+  /// Styrelsearbetet. Alla pekar tillbaka med SetNull utom push-token:
+  /// protokoll och loggar sparar namnet som text och överlever att medlemmen
+  /// tas bort.
+  boardPositions     BoardMember[]
+  ownedMatters       BoardMatter[]       @relation("BoardMatterOwner")
+  matterEntries      BoardMatterEntry[]
+  secretaryOf        Meeting[]           @relation("MeetingSecretary")
+  meetingAttendances MeetingAttendee[]
+  responsibleFor     AgendaItem[]        @relation("AgendaItemResponsible")
+  writtenAgendaItems AgendaItem[]        @relation("AgendaItemWriter")
+  protocolSignatures ProtocolSignature[]
+  deviceTokens       DeviceToken[]
+
   @@unique([associationId, email])
   @@index([associationId])
   @@index([status])
@@ -340,7 +374,14 @@ model BoardMember {
   email     String @default("")
   sortOrder Int    @default(0)
 
+  /// Kontot bakom personen, om hen har ett. Så vet styrelseappen vem som är
+  /// ordförande, kassör osv. SetNull: personen står kvar på styrelsesidan om
+  /// medlemmen tas bort.
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
   @@index([associationId, groupId, sortOrder])
+  @@index([associationId, memberId])
 }
 
 /// Dokument (PDF m.m.).
@@ -363,7 +404,13 @@ model Document {
 
   uploadedAt DateTime @default(now())
 
+  /// Mötet dokumentet hör till, t.ex. det justerade protokollet. SetNull:
+  /// dokumentet ligger kvar i arkivet om mötet tas bort.
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
   @@index([associationId, visibility])
+  @@index([associationId, meetingId])
 }
 
 /// Kategori för felanmälan, t.ex. "VVS / vatten". Var tidigare en enum;
@@ -379,12 +426,17 @@ model MaintenanceCategory {
 
   /// Underleverantör som normalt hanterar den här typen av fel. Tomma fält
   /// döljer motsvarande rad i adminvyn; inget av detta visas publikt.
+  ///
+  /// På väg bort: ersätts av kontaktregistret (Contact via ContactCategory).
+  /// Flyttas med `npm run contacts:migrate` när adminvyn bytt till registret,
+  /// och tas bort ur schemat först när inget läser fälten längre.
   contractorName  String @default("")
   contractorPhone String @default("")
   contractorEmail String @default("")
   contractorInfo  String @default("")
 
   requests MaintenanceRequest[]
+  contacts ContactCategory[]
 
   @@unique([associationId, name])
   @@index([associationId, sortOrder])
@@ -471,6 +523,11 @@ model MaintenanceRequest {
   /// Vem som ska utföra jobbet. Nuvarande läge, inte historik.
   assignedTo String @default("")
 
+  /// Kontakten i registret som fått jobbet, om den valts därifrån. assignedTo
+  /// är fortfarande texten som visas, så att webben fungerar som förut.
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
   /// Används inte längre (uppföljningsdatumet togs bort ur admin, ingen
   /// påminnelse skickades). Kvar så att ingen db push behövs; kan tas bort.
   followUpAt DateTime?
@@ -486,7 +543,9 @@ model MaintenanceRequest {
   /// ny uppdatering för medlemmen.
   memberSeenAt DateTime?
 
-  events MaintenanceEvent[]
+  events       MaintenanceEvent[]
+  boardMatters BoardMatter[]
+  agendaItems  AgendaItem[]
 
   @@unique([associationId, number])
   @@index([associationId, status])
@@ -732,4 +791,422 @@ model DisplaySettings {
   /// gång om dagen). Glest med flit – skärmarna ska inte belasta servern,
   /// och innehållet ändras sällan.
   refreshMinutes Int     @default(1440)
+}
+
+// ---------------------------------------------------------------------------
+// Styrelsearbete – ärenden, möten, protokoll och kontakter
+// ---------------------------------------------------------------------------
+//
+// Används av BrfApi (Schrodar/BrfApp). Styrelseappen och hemsidans admin går
+// båda via API:t, så reglerna – sekreterarens skrivrätt, paragrafernas
+// versioner, justeringen – finns på ett ställe. Webbens sidor för detta
+// anropar API:t i stället för att läsa tabellerna själva, och enumerna här
+// har därför inga motsvarande unioner i src/lib/types.ts.
+//
+// Personer pekas ut med medlemmens id OCH namnet som text. Id:t är SetNull,
+// så protokoll och loggar finns kvar, med namnet, om medlemmen tas bort.
+//
+// Relationerna mellan tabellerna är Cascade eller SetNull, aldrig Restrict,
+// så att en förening kan tas bort i ett svep (scripts/delete-association.ts).
+// Att ett justerat protokoll inte får raderas avgörs i BrfApi.
+
+/// Var ett ärende står.
+enum BoardMatterStatus {
+  oppen
+  /// Väntar på någon utanför styrelsen: offert, leverantör, besked.
+  vantar
+  klar
+}
+
+/// Vad en post i ett ärendes logg är.
+enum BoardMatterEntryKind {
+  /// Vad som gjorts eller hänt.
+  logg
+  /// En kostnad, med beloppet i amountKr.
+  kostnad
+  /// Förslag till beslut inför ett möte.
+  beslutsforslag
+  /// Beslut från ett möte. Skrivs när protokollet låses.
+  beslut
+}
+
+enum MeetingType {
+  ordinarie
+  /// Första mötet efter stämman, där styrelsen fördelar uppdragen.
+  konstituerande
+  extra
+  /// Beslut utan sammanträde, t.ex. via mejl. Protokollförs som ett möte.
+  per_capsulam
+}
+
+/// Mötets gång. Ordningen i flödet styrs av BrfApi, inte av enumen.
+enum MeetingStatus {
+  /// Inplanerat. Dagordningen kan förberedas.
+  planerat
+  /// Mötet är öppnat. Protokollet skrivs, under mötet och efteråt.
+  pagar
+  /// Skickat för justering. Protokollet går inte att ändra.
+  justering
+  /// Justerat. PDF:en ligger i dokumentarkivet.
+  last
+  /// Mötet hölls aldrig.
+  installt
+}
+
+/// Uppdrag på ett möte. ProtocolSignature.role använder samma värden.
+enum MeetingRole {
+  ordforande
+  sekreterare
+  justerare
+}
+
+/// Vad en punkt på dagordningen är.
+enum AgendaItemKind {
+  /// Fasta punkter: öppnande, val, dagordning, föregående protokoll, avslutning.
+  fast
+  /// Ett ärende från styrelsens logg (matterId).
+  arende
+  /// Felanmälningarna – översikten, eller en enskild via maintenanceRequestId.
+  felanmalan
+  /// Övriga punkter med egen rubrik.
+  punkt
+}
+
+/// Hur ett protokoll justerades.
+enum SignatureMethod {
+  /// Engångskod via mejl eller SMS, i appen.
+  otp
+  bankid
+  freja
+  /// Underskrivet på papper och inskannat.
+  papper
+}
+
+/// Vilken sorts kontakt det är. Styr grupperingen i appen.
+enum ContactType {
+  /// Underleverantör eller hantverkare: VVS, el, hiss, lås …
+  leverantor
+  /// Förvaltare och fastighetsskötsel.
+  forvaltning
+  /// Jour för akuta fel.
+  jour
+  /// Allt annat: revisor, försäkring, bank, kommun.
+  ovrigt
+}
+
+enum DevicePlatform {
+  ios
+  android
+}
+
+/// Ett ärende som styrelsen arbetar med mellan mötena, t.ex. "Nya
+/// tvättmaskiner" eller "Offert på takomläggning". Arbetet loggas i
+/// BoardMatterEntry och tas upp på mötena.
+model BoardMatter {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Löpnummer per förening, att hänvisa till i protokoll och samtal.
+  number      Int
+  title       String
+  /// Bakgrunden i korthet. Det som händer sedan skrivs i loggen.
+  description String            @default("")
+  status      BoardMatterStatus @default(oppen)
+
+  /// Den i styrelsen som driver ärendet.
+  ownerMemberId String?
+  owner         Member? @relation("BoardMatterOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+
+  /// Ska tas upp på nästa möte. Ärendet hamnar då på dagordningen när den
+  /// skapas, och flaggan nollställs när protokollet låses.
+  nextMeeting Boolean @default(false)
+
+  /// Felanmälan som ärendet växte ur, om någon.
+  maintenanceRequestId String?
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id], onDelete: SetNull)
+  /// Kontakten som ärendet främst gäller, t.ex. leverantören.
+  contactId            String?
+  contact              Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+
+  entries     BoardMatterEntry[]
+  agendaItems AgendaItem[]
+
+  @@unique([associationId, number])
+  @@index([associationId, status])
+  @@index([associationId, nextMeeting])
+}
+
+/// En post i ett ärendes logg. Raderna skrivs bara till – en sparad post
+/// ändras aldrig i efterhand, så loggen går att lita på som underlag till
+/// protokollet.
+model BoardMatterEntry {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  matterId String
+  matter   BoardMatter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  kind        BoardMatterEntryKind @default(logg)
+  body        String               @default("")
+  /// Belopp i hela kronor, för kind = kostnad.
+  amountKr    Int?
+  /// Bilagor (foton, offerter) i den privata bucketen documents, under
+  /// <associationId>/arenden/<matterId>/. En lista med
+  /// { path, fileName, mimeType, sizeBytes }.
+  attachments Json                 @default("[]")
+
+  authorMemberId String?
+  author         Member? @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
+  authorName     String
+
+  /// Mötet där beslutet fattades, för kind = beslut.
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([associationId, matterId, createdAt])
+}
+
+/// Ett styrelsemöte. Protokollet är mötets punkter (AgendaItem). Det skrivs på
+/// datorn via hemsidans admin, och när det är justerat sparas det som PDF i
+/// dokumentarkivet (Document.meetingId, synlighet board).
+model Meeting {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  type     MeetingType   @default(ordinarie)
+  status   MeetingStatus @default(planerat)
+  startsAt DateTime
+  location String        @default("")
+
+  /// Protokollets nummer, t.ex. 2026:3 (år och löpnummer). Sätts när mötet
+  /// öppnas, så att inställda möten inte lämnar hål i numreringen.
+  year   Int?
+  number Int?
+
+  /// Klockslagen i protokollet: när mötet öppnades och avslutades.
+  openedAt DateTime?
+  closedAt DateTime?
+
+  /// Den som skriver protokollet just nu och har skrivrätt. Byts med "Byt
+  /// sekreterare". Den som skrivit tidigare står kvar som sekreterare i
+  /// MeetingAttendee.roles och kallas också till justering.
+  secretaryMemberId String?
+  secretary         Member? @relation("MeetingSecretary", fields: [secretaryMemberId], references: [id], onDelete: SetNull)
+
+  /// När kallelsen skickades.
+  noticeSentAt     DateTime?
+  /// PDF:en som skickades för justering: sökväg i den privata bucketen
+  /// documents och dess sha256. Varje justering gäller just den filen.
+  protocolPath     String?
+  protocolSha256   String?
+  sentForSigningAt DateTime?
+  lockedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attendees   MeetingAttendee[]
+  agendaItems AgendaItem[]
+  signatures  ProtocolSignature[]
+  documents   Document[]
+  decisions   BoardMatterEntry[]
+
+  @@unique([associationId, year, number])
+  @@index([associationId, startsAt])
+  @@index([associationId, status])
+}
+
+/// En deltagare: ledamot, suppleant eller adjungerad (t.ex. förvaltaren).
+/// Närvaron kan ändras under mötet. Protokollet får då en rad vid den
+/// aktuella punkten (AgendaItem.autoNotes), så att beslutsförheten framgår.
+model MeetingAttendee {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// Null för gäster utan konto. Namnet sparas alltid som text.
+  memberId  String?
+  member    Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  name      String
+  /// Uppdraget i föreningen: "Ordförande", "Ledamot", "Suppleant", "Förvaltare" …
+  boardRole String  @default("")
+
+  present   Boolean       @default(false)
+  arrivedAt DateTime?
+  leftAt    DateTime?
+  /// Uppdrag på just det här mötet. Har sekreteraren bytts har båda kvar
+  /// sekreterare.
+  roles     MeetingRole[] @default([])
+
+  @@unique([meetingId, memberId])
+  @@index([associationId, meetingId])
+}
+
+/// En punkt på dagordningen, och i protokollet en paragraf. Paragrafnumret är
+/// punktens plats i ordningen.
+///
+/// Bara mötets sekreterare får skriva. Varje sparning skickar med version och
+/// avvisas om den inte stämmer, så att två datorer aldrig skriver över
+/// varandra.
+model AgendaItem {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  sortOrder Int
+  kind      AgendaItemKind @default(punkt)
+  title     String
+
+  /// Underlaget: ärendet eller felanmälan som punkten gäller.
+  matterId             String?
+  matter               BoardMatter?        @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  maintenanceRequestId String?
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id], onDelete: SetNull)
+
+  /// Protokolltexten.
+  discussion          String    @default("")
+  decision            String    @default("")
+  /// Vem som ska göra något, och till när.
+  responsibleMemberId String?
+  responsible         Member?   @relation("AgendaItemResponsible", fields: [responsibleMemberId], references: [id], onDelete: SetNull)
+  dueAt               DateTime?
+
+  /// Rader som skrivs automatiskt vid punkten: närvaro och sekreterarbyte,
+  /// t.ex. "Anna Andersson lämnade mötet kl. 19.40. Erik Berg utsågs till
+  /// sekreterare för resten av mötet." De ändras utan att version ökar, så
+  /// att de aldrig krockar med sekreterarens text.
+  autoNotes String[] @default([])
+
+  /// Den som senast skrev i punkten. Namnet sparas som text.
+  writtenByMemberId String?
+  writtenBy         Member? @relation("AgendaItemWriter", fields: [writtenByMemberId], references: [id], onDelete: SetNull)
+  writtenByName     String  @default("")
+  version           Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([associationId, meetingId, sortOrder])
+}
+
+/// En justering av ett protokoll: en rad per person och uppdrag. Raden skapas
+/// när protokollet skickas för justering och fylls i när personen justerat.
+/// Protokollet låses när alla rader är justerade.
+model ProtocolSignature {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  memberId String?
+  member   Member?     @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  /// Namnet som det står under protokollet.
+  name     String
+  role     MeetingRole
+
+  /// Null tills personen justerat.
+  method      SignatureMethod?
+  signedAt    DateTime?
+  /// sha256 för PDF:en som justerades. Ska stämma med mötets protocolSha256 –
+  /// annars har protokollet ändrats efteråt.
+  pdfSha256   String?
+  /// Signeringstjänstens referens (BankID, Freja).
+  providerRef String?
+  /// Underlaget för underskriften: IP, enhet, vart engångskoden skickades,
+  /// eller tjänstens svar.
+  evidence    Json?
+
+  /// Engångskoden vid justering i appen. Bara sha256, kort giltighet och ett
+  /// begränsat antal försök.
+  otpHash      String?
+  otpExpiresAt DateTime?
+  otpAttempts  Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([meetingId, memberId, role])
+  @@index([associationId, meetingId])
+}
+
+/// En kontakt i föreningens register: underleverantörer, förvaltare, jour och
+/// andra som hjälper föreningen. Ersätter underleverantörsfälten på
+/// MaintenanceCategory.
+model Contact {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  /// Det som visas i listan: företaget, eller personen om det inte är ett
+  /// företag.
+  name             String
+  /// Kontaktperson hos företaget. Tom = ingen särskild.
+  contactPerson    String      @default("")
+  type             ContactType @default(leverantor)
+  phone            String      @default("")
+  email            String      @default("")
+  /// Avtal, kundnummer, öppettider, hur man beställer.
+  info             String      @default("")
+  /// Syns för boende i appen, t.ex. jouren. Annars bara för styrelsen.
+  visibleToMembers Boolean     @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories          ContactCategory[]
+  boardMatters        BoardMatter[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@index([associationId, type, name])
+}
+
+/// Vilka felanmälningskategorier en kontakt hanterar (många-till-många). Egen
+/// tabell med associationId, så att kopplingarna scopas som allt annat.
+model ContactCategory {
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  contactId  String
+  contact    Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   MaintenanceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, categoryId])
+  @@index([associationId, categoryId])
+}
+
+/// En telefon som ska få pushnotiser från styrelseappen. Samma telefon har en
+/// rad per förening där kontot är medlem.
+model DeviceToken {
+  id            String      @id @default(uuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  expoPushToken String
+  platform      DevicePlatform
+  createdAt     DateTime       @default(now())
+  /// Senast appen bekräftade token. Rader som inte setts på länge kan städas.
+  lastSeenAt    DateTime       @default(now())
+
+  @@unique([associationId, expoPushToken])
+  @@index([associationId, memberId])
 }

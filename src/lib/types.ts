@@ -80,7 +80,8 @@ export type DocumentCategory =
   | "ordningsregler"
   | "ovrigt";
 
-export type DocumentVisibility = "public" | "member";
+/** board = bara styrelsen (godkänd admin). Syns aldrig på Mina sidor. */
+export type DocumentVisibility = "public" | "member" | "board";
 
 /** Dokument (PDF m.m.). Filen lagras i Supabase Storage när backend kopplas in. */
 export interface DocumentItem {

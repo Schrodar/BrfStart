@@ -56,7 +56,9 @@ export default async function AdminDocumentsPage() {
                     {categoryLabel(doc.category)}
                   </td>
                   <td className="px-4 py-3">
-                    {doc.visibility === "member" ? (
+                    {doc.visibility === "board" ? (
+                      <Badge tone="neutral">Styrelsen</Badge>
+                    ) : doc.visibility === "member" ? (
                       <Badge tone="brand">Medlemmar</Badge>
                     ) : (
                       <Badge tone="success">Publik</Badge>

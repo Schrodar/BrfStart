@@ -109,6 +109,30 @@ npm run association:create -- <slug> "<Föreningens namn>"   # skapa tenant-rade
 npm run admin:invite -- <slug> <admin-epost> <sajtens-adress>  # bjud in styrelse-admin
 ```
 
+## Styrelsearbetet (BrfApp)
+
+Tabellerna för ärenden, möten, protokoll och kontakter (`BoardMatter`,
+`Meeting`, `AgendaItem`, `Contact` m.fl.) används av BrfApi i
+[Schrodar/BrfApp](https://github.com/Schrodar/BrfApp). Både styrelseappen och
+hemsidans admin går via API:t. Schemat ägs ändå här, som allt annat.
+
+- Dokument kan ha synligheten **Bara styrelsen** (`board`). De syns bara i
+  admin och kan bara laddas ner av godkänd admin. Justerade protokoll hamnar
+  där.
+- `npm run contacts:migrate` flyttar underleverantörerna från
+  felanmälningskategorierna till kontaktregistret. Utan `--bekrafta` visar det
+  bara vad som skulle hända. Körs när adminvyn har bytt till registret.
+
+**Ordningen vid schemaändringar.** Prisma läser alla kolumner i varje fråga, så
+kod med en ny kolumn på en befintlig tabell (t.ex. `Association.brandColor`)
+kraschar mot en databas som saknar den. Därför:
+
+1. `db push` mot testprojektet, och prova lokalt.
+2. `db push` mot den riktiga databasen. Ändringar som bara lägger till tabeller
+   och kolumner påverkar inte sajterna som redan kör.
+3. Först därefter: deploya BrfStart, för över ändringen till brfpep och synka
+   schemat i JohanIt och BrfApp.
+
 ## Drift (Coolify på egen VPS)
 
 Varje förening är en egen applikation i Coolify, byggd från repot med

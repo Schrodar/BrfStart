@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getDocumentForDownload } from "@/lib/data";
 import { BUCKET_DOCUMENTS, getSignedUrl } from "@/lib/storage";
+import type { DocumentVisibility } from "@/lib/types";
 
 /**
  * Nedladdning av föreningsdokument.
@@ -24,6 +25,20 @@ function notFound() {
   return new NextResponse("Hittades inte", { status: 404 });
 }
 
+/**
+ * Får den som är inloggad ladda ner dokumentet? Godkänd krävs även för admins
+ * – rollen ensam räcker inte. Styrelsens dokument kräver dessutom admin, och
+ * en synlighet som inte finns med här nekas.
+ */
+async function mayDownload(visibility: DocumentVisibility): Promise<boolean> {
+  if (visibility === "public") return true;
+  const user = await getCurrentUser();
+  if (user?.status !== "approved") return false;
+  if (visibility === "member") return true;
+  if (visibility === "board") return user.role === "admin";
+  return false;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -32,13 +47,7 @@ export async function GET(
 
   const doc = await getDocumentForDownload(id);
   if (!doc || !doc.storagePath) return notFound();
-
-  if (doc.visibility === "member") {
-    const user = await getCurrentUser();
-    // Godkänd krävs även för admins – rollen ensam räcker inte.
-    const allowed = user?.status === "approved";
-    if (!allowed) return notFound();
-  }
+  if (!(await mayDownload(doc.visibility))) return notFound();
 
   const url = await getSignedUrl(BUCKET_DOCUMENTS, doc.storagePath);
   if (!url) return new NextResponse("Filen kunde inte hämtas", { status: 502 });

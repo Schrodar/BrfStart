@@ -91,7 +91,7 @@ export function DocumentForm({
           label="Synlighet"
           htmlFor="visibility"
           required
-          hint="Interna dokument kan bara laddas ner av inloggade medlemmar."
+          hint="Interna dokument kan bara laddas ner av inloggade medlemmar, styrelsens bara av styrelsen."
         >
           <Select
             id="visibility"
@@ -103,6 +103,7 @@ export function DocumentForm({
           >
             <option value="public">Publik (alla)</option>
             <option value="member">Endast medlemmar</option>
+            <option value="board">Bara styrelsen</option>
           </Select>
         </Field>
         <Field

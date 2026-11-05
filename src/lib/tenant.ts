@@ -54,6 +54,17 @@ const ASSOCIATION_SCOPED_MODELS = new Set([
   // flit: en token som skapats för en förening kan då aldrig lösas in hos en annan.
   "SupportSession",
   "MemberInvitation",
+  // Styrelsearbetet. Skrivs av BrfApi (Schrodar/BrfApp), som har samma lista,
+  // men scopas här också om webben någon gång läser dem direkt.
+  "BoardMatter",
+  "BoardMatterEntry",
+  "Meeting",
+  "MeetingAttendee",
+  "AgendaItem",
+  "ProtocolSignature",
+  "Contact",
+  "ContactCategory",
+  "DeviceToken",
 ]);
 
 /**
