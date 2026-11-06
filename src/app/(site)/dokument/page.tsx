@@ -22,7 +22,7 @@ export default async function DocumentsPage() {
         />
 
         <div className="mt-12">
-          <GroupedDocumentList documents={documents} />
+          <GroupedDocumentList documents={documents} pageLinks />
         </div>
 
         {/* Uppmaningen att logga in säger inget till den som redan är det.

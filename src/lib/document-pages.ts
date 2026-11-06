@@ -16,6 +16,22 @@ export const DOCUMENT_PAGES: Record<
   arsredovisningar: { label: "Årsredovisningar", categories: ["arsredovisning"] },
 };
 
+/**
+ * Länken till kategorins egen sida, för rubriken på /dokument. Bara sidans
+ * första kategori får länken – Ordningsregler (också på /stadgar) står direkt
+ * under Stadgar.
+ */
+export function documentPageLink(
+  category: DocumentCategory,
+): { href: string; label: string } | null {
+  for (const [slug, page] of Object.entries(DOCUMENT_PAGES)) {
+    if (page.categories[0] === category) {
+      return { href: `/${slug}`, label: `Till sidan ${page.label}` };
+    }
+  }
+  return null;
+}
+
 /** Sidorna där ett dokument med given kategori och synlighet listas. */
 export function documentPlacements(
   category: DocumentCategory,

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { DocumentItem } from "@/lib/types";
 import { categoryLabel, DOCUMENT_CATEGORIES } from "@/lib/data/documents";
+import { documentPageLink } from "@/lib/document-pages";
 import { formatDate } from "@/lib/utils";
 import { Badge, EmptyState } from "@/components/ui";
 
@@ -92,8 +94,11 @@ export function DocumentList({
  */
 export function GroupedDocumentList({
   documents,
+  pageLinks = false,
 }: {
   documents: DocumentItem[];
+  /** Länk vid rubriken till kategorins egen sida (/stadgar, /arsredovisningar). */
+  pageLinks?: boolean;
 }) {
   if (documents.length === 0) {
     return <EmptyState title="Inga dokument ännu" />;
@@ -105,11 +110,20 @@ export function GroupedDocumentList({
         const inCategory = documents.filter((d) => d.category === category.value);
         if (inCategory.length === 0) return null;
         const headingId = `dokument-${category.value}`;
+        const pageLink = pageLinks ? documentPageLink(category.value) : null;
         return (
           <section key={category.value} aria-labelledby={headingId}>
-            <h2 id={headingId} className="title-card text-[1.375rem]">
-              {category.heading}
-            </h2>
+            {/* Samma uppställning som SectionHeading: rubrik och länk med pil. */}
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+              <h2 id={headingId} className="title-card text-[1.375rem]">
+                {category.heading}
+              </h2>
+              {pageLink ? (
+                <Link href={pageLink.href} className="link-more">
+                  {pageLink.label} <span aria-hidden="true" className="arrow">→</span>
+                </Link>
+              ) : null}
+            </div>
             <div className="mt-5">
               <DocumentList documents={inCategory} showCategory={false} />
             </div>
