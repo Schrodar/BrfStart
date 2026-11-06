@@ -36,24 +36,24 @@ export function CodeSection({
       </div>
       <Card>
         <CardBody className="space-y-5">
-          {missing > 0 ? (
-            <CodeLettersButton
-              action={createCodesAction}
-              fields={{ scope, onlyMissing: "1" }}
-              label={`Skapa koder för ${missing} ${missing === 1 ? "lägenhet" : "lägenheter"} utan kod`}
-              sender={sender}
-            />
-          ) : null}
-          {withCode > 0 ? (
-            <CodeLettersButton
-              action={createCodesAction}
-              fields={{ scope, onlyMissing: "0" }}
-              label="Nya koder för alla"
-              variant="secondary"
-              confirmText="Alla lägenheter här får nya koder, och de gamla slutar gälla direkt. Konton som redan finns fungerar som förut tills någon använder den nya koden."
-              sender={sender}
-            />
-          ) : null}
+          {/* Knapparna renderas alltid och döljs med available – annars
+              försvinner breven när sidan ritas om efter att koderna skapats. */}
+          <CodeLettersButton
+            action={createCodesAction}
+            fields={{ scope, onlyMissing: "1" }}
+            label={`Skapa koder för ${missing} ${missing === 1 ? "lägenhet" : "lägenheter"} utan kod`}
+            sender={sender}
+            available={missing > 0}
+          />
+          <CodeLettersButton
+            action={createCodesAction}
+            fields={{ scope, onlyMissing: "0" }}
+            label="Nya koder för alla"
+            variant="secondary"
+            confirmText="Alla lägenheter här får nya koder, och de gamla slutar gälla direkt. Konton som redan finns fungerar som förut tills någon använder den nya koden."
+            sender={sender}
+            available={withCode > 0}
+          />
           {total === 0 ? (
             <p className="text-sm text-muted">Lägg till lägenheter först.</p>
           ) : null}

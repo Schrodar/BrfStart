@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { AssociationLogo } from "@/components/association";
 import {
   Button,
@@ -25,6 +25,11 @@ export interface LetterSender {
  *
  * Med confirmText krävs ett andra klick. Det gäller allt som gör gamla koder
  * ogiltiga eller raderar ett konto.
+ *
+ * Komponenten måste ligga kvar i trädet även när knappen inte längre behövs:
+ * när koderna skapats ritas sidan om, och "lägenheter utan kod" blir noll. Om
+ * komponenten då försvann skulle breven försvinna med den – och koderna gå
+ * förlorade. Därför styr `available` bara om knappen visas.
  */
 export function CodeLettersButton({
   action,
@@ -34,6 +39,7 @@ export function CodeLettersButton({
   variant = "primary",
   confirmText,
   sender,
+  available = true,
 }: {
   action: LetterAction;
   /** Dolda fält till action:en, t.ex. { scope: "", onlyMissing: "1" }. */
@@ -43,14 +49,19 @@ export function CodeLettersButton({
   variant?: ButtonVariant;
   confirmText?: string;
   sender: LetterSender;
+  /** Finns det något att skapa koder för? Annars döljs bara knappen. */
+  available?: boolean;
 }) {
   const [state, formAction] = useActionState<LetterState, FormData>(action, {});
   const [confirming, setConfirming] = useState(false);
   const askFirst = Boolean(confirmText) && !confirming;
+  const hasLetters = Boolean(state.letters?.length && state.origin);
+
+  if (!available && !hasLetters && !state.error) return null;
 
   return (
     <div className="space-y-4">
-      {askFirst ? (
+      {!available ? null : askFirst ? (
         <Button type="button" variant={variant} onClick={() => setConfirming(true)}>
           {label}
         </Button>
@@ -83,8 +94,8 @@ export function CodeLettersButton({
 
       <FormError>{state.error}</FormError>
 
-      {state.letters && state.letters.length > 0 && state.origin ? (
-        <LetterSheet letters={state.letters} origin={state.origin} sender={sender} />
+      {hasLetters ? (
+        <LetterSheet letters={state.letters!} origin={state.origin!} sender={sender} />
       ) : null}
     </div>
   );
@@ -94,11 +105,17 @@ export function CodeLettersButton({
  * Vid utskrift döljs allt utom breven: varje element som varken innehåller
  * breven eller ligger i dem. Elementen runt breven behåller sin plats men
  * tappar marginaler och ramar, så att första brevet börjar överst på sidan.
+ *
+ * Skapas flera omgångar på samma sida kan en äldre ha koder som redan bytts ut.
+ * "Skriv ut" skriver därför bara ut sin egen omgång (.aktiv).
  */
 const PRINT_CSS = `
 @media print {
   @page { size: A4; margin: 16mm; }
   body *:not(:has(.brev-utskrift)):not(.brev-utskrift):not(.brev-utskrift *) {
+    display: none !important;
+  }
+  body.skriver-ut-en-omgang .brev-utskrift:not(.aktiv) {
     display: none !important;
   }
   body *:has(.brev-utskrift) {
@@ -125,6 +142,23 @@ function LetterSheet({
   sender: LetterSender;
 }) {
   const host = new URL(origin).host;
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Bara den här omgången kommer med på utskriften – en äldre omgång på samma
+  // sida kan ha koder som redan bytts ut.
+  function print() {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    sheet.classList.add("aktiv");
+    document.body.classList.add("skriver-ut-en-omgang");
+    const done = () => {
+      sheet.classList.remove("aktiv");
+      document.body.classList.remove("skriver-ut-en-omgang");
+      window.removeEventListener("afterprint", done);
+    };
+    window.addEventListener("afterprint", done);
+    window.print();
+  }
 
   return (
     <div className="space-y-4">
@@ -136,12 +170,12 @@ function LetterSheet({
           Koderna visas bara nu. Skriv ut innan du lämnar sidan – laddar du om
           måste nya koder skapas.
         </p>
-        <Button type="button" size="sm" onClick={() => window.print()}>
+        <Button type="button" size="sm" onClick={print}>
           Skriv ut
         </Button>
       </div>
 
-      <div className="brev-utskrift space-y-6">
+      <div ref={sheetRef} className="brev-utskrift space-y-6">
         {letters.map((letter) => (
           <Letter key={letter.apartmentId} letter={letter} host={host} sender={sender} />
         ))}

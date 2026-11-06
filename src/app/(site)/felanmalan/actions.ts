@@ -71,9 +71,12 @@ export async function submitMaintenance(
     };
   }
 
+  // Lägenhetens konto har ingen e-post. Lägenheten sparas som namn på ärendet,
+  // så att styrelsen ser varifrån det kom även efter ett ägarbyte, då kontot
+  // raderas och kopplingen till ärendet försvinner.
   const contact = user
     ? user.apartmentNumber
-      ? { name: "", email: "" }
+      ? { name: `Lägenhet ${user.apartmentNumber}`, email: "" }
       : { name: user.fullName, email: user.email }
     : { name: "", email: "", ...parsed.data };
 
@@ -93,9 +96,7 @@ export async function submitMaintenance(
   await notifyMaintenance({
     category: result.request.categoryName,
     location: result.request.location,
-    name: user?.apartmentNumber
-      ? `Lägenhet ${user.apartmentNumber}`
-      : result.request.name || "Anonym anmälare",
+    name: result.request.name || "Anonym anmälare",
   });
 
   // Numret gör det lätt att hänvisa till ärendet. Inloggade kan dessutom följa
