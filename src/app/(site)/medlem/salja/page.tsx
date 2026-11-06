@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireApprovedMember } from "@/lib/auth";
-import { getOrCreateOwnedApartment } from "@/lib/data";
+import { getOwnedApartment } from "@/lib/data";
 import { canEditListing, LOCKED_WHILE_PUBLISHED } from "@/lib/listing-rules";
 import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardBody } from "@/components/ui";
@@ -24,21 +25,8 @@ const secondary =
 
 export default async function SellApartmentPage() {
   const user = await requireApprovedMember();
-  const apartment = await getOrCreateOwnedApartment({
-    id: user.id,
-    apartment: user.apartment,
-  });
-
-  if (!apartment) {
-    return (
-      <Card>
-        <CardBody className="py-8 text-center text-sm text-muted">
-          Vi kunde inte koppla dig till en lägenhet. Kontakta styrelsen så
-          hjälper de dig.
-        </CardBody>
-      </Card>
-    );
-  }
+  const apartment = await getOwnedApartment(user.id);
+  if (!apartment) redirect("/medlem");
 
   const selfPublish = user.canManageListing;
 

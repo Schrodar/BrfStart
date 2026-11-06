@@ -263,6 +263,8 @@ export interface MaintenanceRequest {
   assignedTo: string;
   /** Medlemmen som anmälde inloggad. null = besökare eller utloggad anmälare. */
   memberId: string | null;
+  /** Lägenheten, om anmälaren var inloggad med lägenhetens konto – t.ex. "23". */
+  reporterApartment: string | null;
   /** Ärendets historik, äldst först. Anmälaren ser bara det som är synligt för medlemmen. */
   events: MaintenanceEvent[];
   /** Var felet finns, t.ex. "Tvättstuga plan 1". */

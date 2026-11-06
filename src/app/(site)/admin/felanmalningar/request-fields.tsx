@@ -57,7 +57,7 @@ export function RequestFields({
         <Field
           label="Status"
           htmlFor={id("status")}
-          hint={isMember ? "Medlemmen ser statusen på Mina sidor." : undefined}
+          hint={isMember ? "Anmälaren ser statusen på Mina sidor." : undefined}
         >
           <Select id={id("status")} name="status" defaultValue={request.status}>
             {MAINTENANCE_STATUSES.map((s) => (
@@ -105,11 +105,13 @@ export function RequestFields({
       </Field>
 
       <Field
-        label="Svar till medlemmen"
+        label="Svar till anmälaren"
         htmlFor={id("reply")}
         hint={
           isMember
-            ? "Syns för medlemmen på Mina sidor. Skicka det också som mejl med knappen längst ner."
+            ? request.email
+              ? "Syns för anmälaren på Mina sidor. Skicka det också som mejl med knappen längst ner."
+              : "Syns för anmälaren på Mina sidor."
             : "Anmälaren var inte inloggad – skicka svaret som mejl med knappen längst ner."
         }
       >

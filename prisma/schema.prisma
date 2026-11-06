@@ -669,8 +669,8 @@ model Apartment {
   ownerMemberId  String? @unique
   owner          Member? @relation(fields: [ownerMemberId], references: [id], onDelete: SetNull)
 
-  /// Valfri: en lägenhet kan sakna hus (t.ex. en som skapats automatiskt när en
-  /// boende loggat in). Den hamnar då under "Ej placerade" i registret.
+  /// Valfri: en lägenhet kan sakna hus. Den hamnar då under "Ej placerade" i
+  /// registret.
   buildingId String?
   building   Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
 

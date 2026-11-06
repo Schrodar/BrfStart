@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { submitMaintenance, type MaintenanceState } from "./actions";
 import { HONEYPOT_FIELD } from "@/lib/form";
@@ -35,33 +35,20 @@ export function MaintenanceForm({
     {},
   );
 
-  // Inloggad anmälare, läst i webbläsaren (sidan är statisk). canTrack =
-  // kontot är godkänt och når Mina sidor. Ärendet kopplas till kontot i
-  // server action:en oavsett vad som visas här.
+  // Inloggad anmälare, läst i webbläsaren (sidan är statisk). Ärendet kopplas
+  // till kontot i server action:en oavsett vad som visas här.
   const { member: me } = useCurrentMember();
-  const member = me
-    ? {
-        fullName: me.fullName,
-        email: me.email,
-        canTrack: me.status === "approved",
-      }
+  const signedInAs = me
+    ? me.apartmentNumber
+      ? `lägenhet ${me.apartmentNumber}`
+      : me.fullName
     : null;
-
-  // Uppgifterna kommer först efter att sidan visats: fyll bara i tomma fält,
-  // så att det besökaren redan skrivit aldrig skrivs över.
-  const emailRef = useRef<HTMLInputElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (!me) return;
-    if (emailRef.current && !emailRef.current.value) emailRef.current.value = me.email;
-    if (nameRef.current && !nameRef.current.value) nameRef.current.value = me.fullName;
-  }, [me]);
 
   if (state.success) {
     return (
       <div className="space-y-3">
         <FormSuccess>{state.success}</FormSuccess>
-        {member?.canTrack ? (
+        {me ? (
           <p className="text-sm text-muted">
             Ärendet syns under{" "}
             <Link
@@ -70,7 +57,7 @@ export function MaintenanceForm({
             >
               Mina sidor → Felanmälningar
             </Link>
-            , och du får besked när styrelsen ändrar status.
+            , där ni ser ny status och styrelsens svar.
           </p>
         ) : null}
       </div>
@@ -84,7 +71,7 @@ export function MaintenanceForm({
       {/* Honeypot mot spam: dolt för både ögon och skärmläsare, och går inte
           att tabba till. Bara för utloggade – servern släpper alltid igenom
           inloggade (se actions.ts). */}
-      {member ? null : (
+      {me ? null : (
         <div className="sr-only" aria-hidden="true">
           <label htmlFor={HONEYPOT_FIELD}>Lämna det här fältet tomt</label>
           <input
@@ -98,37 +85,35 @@ export function MaintenanceForm({
         </div>
       )}
 
-      {member ? (
+      {/* Inloggad behövs varken namn eller e-post: ärendet kopplas till kontot,
+          och styrelsens svar syns på Mina sidor. */}
+      {me ? (
         <p className="rounded-lg bg-brand-50/70 px-3 py-2 text-sm text-brand-800">
           Du är inloggad som{" "}
-          <strong className="font-medium">{member.fullName}</strong>.{" "}
-          {member.canTrack
-            ? "Ärendet kopplas till ditt konto – du kan följa det under Mina sidor och får besked när styrelsen ändrar status."
-            : "Ärendet kopplas till ditt konto och syns under Mina sidor när styrelsen har godkänt kontot."}
+          <strong className="font-medium">{signedInAs}</strong>. Ärendet kopplas
+          till kontot – ni följer det och läser styrelsens svar under Mina sidor.
         </p>
-      ) : null}
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field
-          label="E-post"
-          htmlFor="email"
-          required
-          hint="Styrelsen svarar dig hit om ärendet."
-        >
-          <Input
-            ref={emailRef}
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            label="E-post"
+            htmlFor="email"
             required
-          />
-        </Field>
-        <Field label="Namn" htmlFor="name" hint="Valfritt.">
-
-          <Input ref={nameRef} id="name" name="name" autoComplete="name" />
-        </Field>
-      </div>
+            hint="Styrelsen svarar dig hit om ärendet."
+          >
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+            />
+          </Field>
+          <Field label="Namn" htmlFor="name" hint="Valfritt.">
+            <Input id="name" name="name" autoComplete="name" />
+          </Field>
+        </div>
+      )}
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Kategori" htmlFor="categoryId" required>

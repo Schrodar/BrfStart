@@ -217,10 +217,7 @@ export async function getApartmentsByBuilding(
   return rows.map((a) => toApartment(a, null)).sort((x, y) => compareApartmentNumbers(x.number, y.number));
 }
 
-/**
- * Lägenheter utan hus. Hit hamnar bland annat de som skapats automatiskt när
- * en boende loggat in – styrelsen ser dem och kan placera dem i rätt hus.
- */
+/** Lägenheter utan hus – de visas samlat och kan placeras i rätt hus. */
 export async function getUnassignedApartments(): Promise<Apartment[]> {
   const { db } = await getTenantDb();
   const rows = await db.apartment.findMany({
@@ -241,48 +238,6 @@ export async function setApartmentBuilding(
     if (!building) return; // hus från annan förening – ignoreras
   }
   await db.apartment.updateMany({ where: { id }, data: { buildingId } });
-}
-
-/**
- * Hämtar den boendes lägenhet, eller skapar/knyter en via lägenhetsnumret.
- * Returnerar null om numret saknas eller ägs av någon annan.
- */
-export async function getOrCreateOwnedApartment(member: {
-  id: string;
-  apartment: string;
-}): Promise<Apartment | null> {
-  const { db, associationId } = await getTenantDb();
-
-  const owned = await db.apartment.findFirst({
-    where: { ownerMemberId: member.id },
-    include: withPhotos,
-  });
-  if (owned) return toApartment(owned, await floorPlanUrlFor(owned, true));
-
-  const number = member.apartment.trim();
-  if (!number) return null;
-
-  const existing = await db.apartment.findFirst({ where: { number } });
-  if (existing) {
-    if (existing.ownerMemberId && existing.ownerMemberId !== member.id) {
-      return null; // ägs av någon annan
-    }
-    await db.apartment.updateMany({
-      where: { id: existing.id },
-      data: { ownerMemberId: member.id },
-    });
-    const claimed = await db.apartment.findFirst({
-      where: { id: existing.id },
-      include: withPhotos,
-    });
-    return claimed ? toApartment(claimed, await floorPlanUrlFor(claimed, true)) : null;
-  }
-
-  const created = await db.apartment.create({
-    data: { associationId, number, ownerMemberId: member.id },
-    include: withPhotos,
-  });
-  return toApartment(created, await floorPlanUrlFor(created, true));
 }
 
 // ---------------------------------------------------------------------------

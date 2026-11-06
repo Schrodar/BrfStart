@@ -4,7 +4,6 @@ import {
   getAllNews,
   getEconomyFigures,
   getMaintenanceRequests,
-  getPendingMembers,
 } from "@/lib/data";
 import { StaleFiguresNotice } from "@/components/key-figures";
 import { Card, CardBody } from "@/components/ui";
@@ -41,8 +40,7 @@ function StatCard({
 }
 
 export default async function AdminDashboard() {
-  const [pending, maintenance, news, economy, submittedListings] = await Promise.all([
-    getPendingMembers(),
+  const [maintenance, news, economy, submittedListings] = await Promise.all([
     getMaintenanceRequests(),
     getAllNews(),
     getEconomyFigures(),
@@ -57,12 +55,6 @@ export default async function AdminDashboard() {
       <StaleFiguresNotice figures={economy} showLink />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          label="Väntar på godkännande"
-          value={pending.length}
-          href="/admin/medlemmar"
-          highlight
-        />
         <StatCard
           label="Öppna felanmälningar"
           value={newRequests}
@@ -87,9 +79,9 @@ export default async function AdminDashboard() {
           <h2 className="font-semibold">Kom igång</h2>
           <p className="mt-1 text-sm text-muted">
             Härifrån hanterar styrelsen allt innehåll på sidan. Använd flikarna
-            ovan för att redigera nyheter, dokument, styrelseuppgifter,
-            föreningsfakta och för att hantera medlemmar, felanmälningar och
-            lägenheter.
+            ovan för att redigera nyheter, dokument, styrelseuppgifter och
+            föreningsfakta och för att hantera felanmälningar, annonser och
+            trapphustavlor. Lägenheternas konton och koder sköts av JnM.
           </p>
         </CardBody>
       </Card>

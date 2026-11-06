@@ -6,14 +6,12 @@ import { requireAdmin } from "@/lib/auth";
 import {
   createMaintenanceCategory,
   deleteMaintenanceCategory,
-  getMemberById,
   reorderMaintenanceCategories,
   updateMaintenanceCategory,
   updateMaintenanceRequest,
   updateMaintenanceSettings,
 } from "@/lib/data";
-import { notifyMaintenanceStatusChanged } from "@/lib/email";
-import type { MaintenanceRequest, MaintenanceStatus } from "@/lib/types";
+import type { MaintenanceStatus } from "@/lib/types";
 import type { FormState } from "@/lib/form";
 
 const valid: MaintenanceStatus[] = ["ny", "pagar", "vantar", "atgardad"];
@@ -29,34 +27,11 @@ function revalidate() {
 }
 
 /**
- * Berättar för medlemmen att statusen ändrats. Mejlet går till den e-post
- * medlemmen angav i anmälan, annars till kontots. Ett misslyckat utskick får
- * inte stoppa sparningen – statusen syns ändå på Mina sidor.
- *
- * Returnerar om någon aviserades, så att styrelsen får veta det.
- */
-async function notifyReporter(request: MaintenanceRequest): Promise<boolean> {
-  if (!request.memberId) return false;
-  const member = await getMemberById(request.memberId);
-  if (!member) return false;
-  try {
-    await notifyMaintenanceStatusChanged({
-      to: request.email || member.email,
-      name: member.fullName,
-      category: request.categoryName,
-      location: request.location,
-      status: request.status,
-    });
-    return true;
-  } catch (error) {
-    console.error("Kunde inte avisera medlemmen om ny status:", error);
-    return false;
-  }
-}
-
-/**
  * Sparar ett ärende – från ärendemodalen och från mötesläget, som skickar
  * samma fält. Beslut, svar och notering blir var sin händelse i historiken.
+ *
+ * Sajten mejlar inte anmälaren. En inloggad anmälare ser status och svar på
+ * Mina sidor; andra får styrelsens svar som ett mejl styrelsen skickar själv.
  */
 export async function updateRequestAction(
   _prev: FormState,
@@ -79,20 +54,17 @@ export async function updateRequestAction(
     author: admin.fullName,
   });
   if (!updated) return { error: "Ärendet hittades inte." };
-
-  const notified =
-    updated.statusChanged && (await notifyReporter(updated.request));
   revalidate();
 
   const parts = ["Ärendet sparat."];
   if (updated.messageToMember) {
     parts.push(
       updated.request.memberId
-        ? "Medlemmen ser svaret på Mina sidor."
-        : "Anmälaren är inte inloggad medlem och ser inte svaret här – kopiera mejlet och skicka det.",
+        ? "Anmälaren ser svaret på Mina sidor."
+        : "Anmälaren var inte inloggad och ser inte svaret här – kopiera mejlet och skicka det.",
     );
-  } else if (notified) {
-    parts.push("Medlemmen har fått besked om den nya statusen.");
+  } else if (updated.statusChanged && updated.request.memberId) {
+    parts.push("Anmälaren ser den nya statusen på Mina sidor.");
   }
   return { success: parts.join(" ") };
 }

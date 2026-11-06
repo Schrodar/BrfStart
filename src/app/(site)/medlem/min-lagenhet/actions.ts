@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireApprovedMember } from "@/lib/auth";
 import {
   addPhoto,
-  getOrCreateOwnedApartment,
+  getOwnedApartment,
   removePhoto,
   setFloorPlan,
   updateApartmentFacts,
@@ -23,12 +23,10 @@ import { canEditListing, LOCKED_WHILE_PUBLISHED } from "@/lib/listing-rules";
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? "");
 
+/** Lägenheten slås alltid upp från inloggningen, aldrig från formuläret. */
 async function myApartment() {
   const user = await requireApprovedMember();
-  const apartment = await getOrCreateOwnedApartment({
-    id: user.id,
-    apartment: user.apartment,
-  });
+  const apartment = await getOwnedApartment(user.id);
   return { user, apartment };
 }
 
@@ -43,7 +41,7 @@ function revalidate() {
   revalidatePath("/");
 }
 
-const NO_APARTMENT = "Din lägenhet kunde inte kopplas. Kontakta styrelsen.";
+const NO_APARTMENT = "Kontot hör inte till någon lägenhet.";
 
 export async function updateFactsAction(
   _prev: FormState,
@@ -51,9 +49,10 @@ export async function updateFactsAction(
 ): Promise<FormState> {
   const { apartment } = await myApartment();
   if (!apartment) return { error: NO_APARTMENT };
+  // Numren är inloggningen och ändras bara av JnM – de följer med som de är.
   const result = await updateApartmentFacts(apartment.id, {
-    number: str(fd, "number"),
-    standardNumber: str(fd, "standardNumber"),
+    number: apartment.number,
+    standardNumber: apartment.standardNumber,
     floor: str(fd, "floor"),
     rooms: str(fd, "rooms"),
     sizeSqm: str(fd, "sizeSqm"),

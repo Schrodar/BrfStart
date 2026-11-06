@@ -11,6 +11,8 @@ export interface SessionMember {
   email: string;
   role: Role;
   status: MemberStatus;
+  /** Lägenhetens nummer för lägenhetens konto, annars null (styrelsens konton). */
+  apartmentNumber: string | null;
 }
 
 export interface CurrentMemberState {

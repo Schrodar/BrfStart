@@ -128,12 +128,13 @@ export async function requireSupport(): Promise<CurrentUser> {
 }
 
 /**
- * Kräver godkänd medlem – även admins måste vara godkända. Väntande konton
- * skickas till en informationssida.
+ * Kräver godkänt konto – även admins måste vara godkända. Väntande och
+ * spärrade konton finns bara kvar från tiden med registrering; de skickas till
+ * inloggningen, som förklarar hur man kommer in.
  */
 export async function requireApprovedMember(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/logga-in?next=/medlem");
-  if (user.status !== "approved") redirect("/medlem/vantar");
+  if (user.status !== "approved") redirect("/logga-in");
   return user;
 }

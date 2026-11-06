@@ -17,9 +17,15 @@ type Action = (prev: FormState, formData: FormData) => Promise<FormState>;
 export function FactsForm({
   apartment,
   action,
+  editNumbers = true,
 }: {
   apartment: Apartment;
   action: Action;
+  /**
+   * Får numren ändras? Lägenhetsnumret är de boendes inloggning, så bara JnM
+   * ändrar numren (i supportläget). De boende ser dem men kan inte ändra dem.
+   */
+  editNumbers?: boolean;
 }) {
   const [state, formAction] = useActionState<FormState, FormData>(action, {});
 
@@ -30,31 +36,35 @@ export function FactsForm({
       {state.success ? <FormSuccess>{state.success}</FormSuccess> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Lägenhetsnummer"
-          htmlFor="number"
-          required
-          hint="Föreningens eget nummer. Unikt i föreningen."
-        >
-          <Input
-            id="number"
-            name="number"
-            defaultValue={apartment.number}
-            required
-          />
-        </Field>
-        <Field
-          label="Lantmäteriets nummer"
-          htmlFor="standardNumber"
-          hint="T.ex. 1101 – våningsplan (entré = 10) + lägenhet på planet."
-        >
-          <Input
-            id="standardNumber"
-            name="standardNumber"
-            defaultValue={apartment.standardNumber}
-            inputMode="numeric"
-          />
-        </Field>
+        {editNumbers ? (
+          <>
+            <Field
+              label="Lägenhetsnummer"
+              htmlFor="number"
+              required
+              hint="Föreningens eget nummer. Unikt i föreningen – och de boendes inloggning."
+            >
+              <Input
+                id="number"
+                name="number"
+                defaultValue={apartment.number}
+                required
+              />
+            </Field>
+            <Field
+              label="Lantmäteriets nummer"
+              htmlFor="standardNumber"
+              hint="T.ex. 1101 – våningsplan (entré = 10) + lägenhet på planet."
+            >
+              <Input
+                id="standardNumber"
+                name="standardNumber"
+                defaultValue={apartment.standardNumber}
+                inputMode="numeric"
+              />
+            </Field>
+          </>
+        ) : null}
         <Field label="Våning" htmlFor="floor">
           <Input id="floor" name="floor" defaultValue={apartment.floor} />
         </Field>

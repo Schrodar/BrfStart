@@ -12,22 +12,26 @@ const shortcuts = [
   {
     href: "/medlem/min-lagenhet",
     title: "Min lägenhet",
-    description: "Uppgifter om din lägenhet och din planritning.",
+    description: "Uppgifter om lägenheten och planritningen.",
+    apartmentOnly: true,
   },
   {
     href: "/medlem/felanmalningar",
     title: "Felanmälningar",
-    description: "Följ dina felanmälningar och se vad styrelsen gjort.",
+    description: "Följ era felanmälningar och se vad styrelsen gjort.",
+    apartmentOnly: false,
   },
   {
     href: "/medlem/dokument",
     title: "Dokument",
     description: "Läs styrelseprotokoll och andra interna dokument.",
+    apartmentOnly: false,
   },
   {
     href: "/medlem/salja",
     title: "Sälja bostaden",
-    description: "Skapa och publicera en annons för din lägenhet.",
+    description: "Skapa och publicera en annons för lägenheten.",
+    apartmentOnly: true,
   },
 ];
 
@@ -35,25 +39,24 @@ export default async function MemberDashboard() {
   const user = await requireApprovedMember();
   const requests = await getMemberMaintenanceRequests(user.id);
   // Det som är värt att se direkt: pågående ärenden, och åtgärdade ärenden
-  // medlemmen inte sett den nya statusen på än.
+  // man inte sett den nya statusen på än.
   const current = requests.filter(
     (r) => isActiveMaintenanceStatus(r.status) || r.hasUpdate,
   );
+  // Min lägenhet och Sälja hör till lägenhetens konto.
+  const visible = shortcuts.filter((s) => user.apartmentNumber || !s.apartmentOnly);
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-lg font-semibold">Hej {user.fullName}!</h2>
-        <p className="mt-1 text-sm text-muted">
-          Här hittar du det som bara är för boende i föreningen.
-        </p>
-      </div>
+      <p className="text-sm text-muted">
+        Här hittar du det som bara är för boende i föreningen.
+      </p>
 
       {current.length > 0 ? (
         <Card>
           <CardBody>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 className="font-semibold">Dina felanmälningar</h3>
+              <h3 className="font-semibold">Pågående felanmälningar</h3>
               <Link
                 href="/medlem/felanmalningar"
                 className="text-sm font-medium text-brand-700 hover:underline"
@@ -87,7 +90,7 @@ export default async function MemberDashboard() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {shortcuts.map((s) => (
+        {visible.map((s) => (
           <Link key={s.href} href={s.href}>
             <Card className="h-full transition-shadow hover:shadow-md">
               <CardBody>

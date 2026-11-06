@@ -177,8 +177,11 @@ function RequestModal({
 
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted">
           <span className="inline-flex items-center gap-1.5">
-            Anmäld av: {request.name || "Anonym"}
-            {request.memberId ? <Badge tone="brand">Medlem</Badge> : null}
+            Anmäld av:{" "}
+            {request.reporterApartment
+              ? `Lägenhet ${request.reporterApartment}`
+              : request.name || "Anonym"}
+            {request.memberId ? <Badge tone="brand">Mina sidor</Badge> : null}
           </span>
           {request.email ? (
             <span>

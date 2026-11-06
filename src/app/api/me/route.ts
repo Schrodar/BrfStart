@@ -18,6 +18,7 @@ export async function GET() {
         email: user.email,
         role: user.role,
         status: user.status,
+        apartmentNumber: user.apartmentNumber,
       }
     : null;
 

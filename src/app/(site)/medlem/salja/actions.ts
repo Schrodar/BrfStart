@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireApprovedMember } from "@/lib/auth";
 import {
   endListing,
-  getOrCreateOwnedApartment,
+  getOwnedApartment,
   publishListing,
   startListing,
   submitListing,
@@ -17,7 +17,7 @@ import { canEditListing, LOCKED_WHILE_PUBLISHED } from "@/lib/listing-rules";
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? "");
 
-const NO_APARTMENT = "Din lägenhet kunde inte kopplas. Kontakta styrelsen.";
+const NO_APARTMENT = "Kontot hör inte till någon lägenhet.";
 
 /**
  * Den boende hanterar bara sin EGEN lägenhet – id:t kommer aldrig från
@@ -29,10 +29,7 @@ const NO_APARTMENT = "Din lägenhet kunde inte kopplas. Kontakta styrelsen.";
  */
 async function mine() {
   const user = await requireApprovedMember();
-  const apartment = await getOrCreateOwnedApartment({
-    id: user.id,
-    apartment: user.apartment,
-  });
+  const apartment = await getOwnedApartment(user.id);
   return { user, apartment };
 }
 

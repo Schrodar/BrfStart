@@ -244,7 +244,11 @@ function MeetingRow({
             <span>Anmäld {formatDate(request.createdAt)}</span>
             {carriedOver ? <span>Från en tidigare månad</span> : null}
             {request.assignedTo ? <span>Utförs av {request.assignedTo}</span> : null}
-            {request.memberId ? <span>Inloggad medlem</span> : null}
+            {request.reporterApartment ? (
+              <span>Lägenhet {request.reporterApartment}</span>
+            ) : request.memberId ? (
+              <span>Inloggad anmälare</span>
+            ) : null}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">

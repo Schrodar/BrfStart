@@ -103,8 +103,17 @@ function toEvent(e: DbEvent): MaintenanceEvent {
   };
 }
 
+/** Lägenheten bakom anmälarens konto – bara nummer, inget annat om kontot. */
+const reporter = {
+  member: { select: { ownedApartment: { select: { number: true } } } },
+} as const;
+
 function toRequest(
-  r: DbMaintenance & { category: DbCategory | null; events?: DbEvent[] },
+  r: DbMaintenance & {
+    category: DbCategory | null;
+    events?: DbEvent[];
+    member?: { ownedApartment: { number: string } | null } | null;
+  },
 ): MaintenanceRequest {
   return {
     id: r.id,
@@ -116,6 +125,7 @@ function toRequest(
     categoryName: r.category?.name ?? "Okänd kategori",
     assignedTo: r.assignedTo,
     memberId: r.memberId,
+    reporterApartment: r.member?.ownedApartment?.number ?? null,
     events: (r.events ?? []).map(toEvent),
     location: r.location,
     description: r.description,
@@ -321,6 +331,7 @@ export async function getMaintenanceRequests(): Promise<MaintenanceRequest[]> {
     include: {
       category: true,
       events: { orderBy: { createdAt: "asc" } },
+      ...reporter,
     },
   });
   return rows.map(toRequest);
@@ -369,7 +380,7 @@ export async function createMaintenanceRequest(
           // skulle det räknas som en ny uppdatering direkt.
           memberSeenAt: input.memberId ? new Date() : null,
         },
-        include: { category: true, events: true },
+        include: { category: true, events: true, ...reporter },
       });
       return { ok: true, request: toRequest(row) };
     } catch (error) {
@@ -462,7 +473,11 @@ export async function updateMaintenanceRequest(
 
   const row = await db.maintenanceRequest.findFirst({
     where: { id },
-    include: { category: true, events: { orderBy: { createdAt: "asc" } } },
+    include: {
+      category: true,
+      events: { orderBy: { createdAt: "asc" } },
+      ...reporter,
+    },
   });
   return row
     ? {

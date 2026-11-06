@@ -75,8 +75,7 @@ export default async function AdminApartmentsPage() {
             <BuildingCard key={b.id} building={b} />
           ))}
 
-          {/* Lägenheter utan hus – bland annat de som skapats automatiskt när
-              en boende loggat in. Kortet visas bara när det finns några. */}
+          {/* Lägenheter utan hus. Kortet visas bara när det finns några. */}
           {unassigned.length > 0 ? (
             <Link href="/admin/lagenheter/hus/ej-placerade">
               <Card className="h-full border-dashed transition-shadow hover:shadow-md">

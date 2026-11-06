@@ -19,8 +19,10 @@ export default async function LoginPage({
     searchParams,
   ]);
   // requireAdmin/requireApprovedMember skickar hit med ?next=<skyddad sida>.
+  // Ett konto som inte är godkänt skickas inte vidare – då skulle det studsa
+  // tillbaka hit från Mina sidor.
   const next = safeNextPath(params.next);
-  if (user) {
+  if (user?.status === "approved") {
     redirect(next ?? (user.role === "admin" ? "/admin" : "/medlem"));
   }
 

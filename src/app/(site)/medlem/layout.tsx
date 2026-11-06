@@ -4,7 +4,7 @@ import {
   type SubNavBadge,
   type SubNavItem,
 } from "@/components/layout/sub-nav";
-import { requireUser } from "@/lib/auth";
+import { requireApprovedMember } from "@/lib/auth";
 import { getMemberMaintenanceSummary } from "@/lib/data";
 import type { MemberMaintenanceSummary } from "@/lib/types";
 
@@ -31,38 +31,34 @@ export default async function MemberLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireUser();
-  const approved = user.status === "approved";
-  const maintenance = approved
-    ? await getMemberMaintenanceSummary(user.id)
-    : null;
+  const user = await requireApprovedMember();
+  const maintenance = await getMemberMaintenanceSummary(user.id);
+  // Lägenhetens konto har en lägenhet. Styrelsens personliga konton har det
+  // inte – de ser Översikt, Felanmälningar och Dokument.
+  const apartment = user.apartmentNumber;
 
   const memberNav: SubNavItem[] = [
     { href: "/medlem", label: "Översikt" },
-    { href: "/medlem/min-lagenhet", label: "Min lägenhet" },
+    ...(apartment ? [{ href: "/medlem/min-lagenhet", label: "Min lägenhet" }] : []),
     {
       href: "/medlem/felanmalningar",
       label: "Felanmälningar",
-      badge: maintenance ? maintenanceBadge(maintenance) : undefined,
+      badge: maintenanceBadge(maintenance),
     },
     { href: "/medlem/dokument", label: "Dokument" },
-    { href: "/medlem/salja", label: "Sälja bostaden" },
+    ...(apartment ? [{ href: "/medlem/salja", label: "Sälja bostaden" }] : []),
   ];
 
   return (
     <div className="border-b border-border bg-surface">
       <Container className="pt-10 sm:pt-12">
-        <p className="eyebrow">
-          Medlemssidor
-        </p>
+        <p className="eyebrow">Mina sidor</p>
         <h1 className="title-section mt-3">
-          Hej {user.fullName.split(" ")[0]}!
+          {apartment ? `Lägenhet ${apartment}` : `Hej ${user.fullName.split(" ")[0]}!`}
         </h1>
-        {approved ? (
-          <div className="mt-6 border-b border-border">
-            <SubNav items={memberNav} label="Medlemssidor" />
-          </div>
-        ) : null}
+        <div className="mt-6 border-b border-border">
+          <SubNav items={memberNav} label="Mina sidor" />
+        </div>
       </Container>
 
       <div className="bg-background">

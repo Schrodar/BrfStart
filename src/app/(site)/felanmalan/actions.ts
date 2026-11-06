@@ -11,21 +11,25 @@ export interface MaintenanceState {
   success?: string;
 }
 
+/** Det som alltid krävs: vad som är fel och var. */
+const issueSchema = z.object({
+  categoryId: z.string().min(1, "Välj en kategori."),
+  location: z.string().min(2, "Ange var felet finns."),
+  description: z.string().min(5, "Beskriv felet lite mer utförligt."),
+});
+
 /**
- * Namnet är frivilligt, men styrelsen måste kunna svara anmälaren – och svaret
- * går med e-post, så e-posten krävs. Telefon frågas inte längre efter; kolumnen
- * finns kvar för äldre ärenden.
+ * Utloggad anmälare: namnet är frivilligt, men styrelsen måste kunna svara –
+ * och svaret går med e-post, så e-posten krävs. Telefon frågas inte längre
+ * efter; kolumnen finns kvar för äldre ärenden.
  */
-const schema = z.object({
+const guestSchema = issueSchema.extend({
   name: z.string().default(""),
   email: z
     .string()
     .trim()
     .min(1, "Fyll i din e-post så att styrelsen kan svara dig.")
     .email("Ange en giltig e-postadress."),
-  categoryId: z.string().min(1, "Välj en kategori."),
-  location: z.string().min(2, "Ange var felet finns."),
-  description: z.string().min(5, "Beskriv felet lite mer utförligt."),
 });
 
 const SUCCESS =
@@ -45,13 +49,21 @@ export async function submitMaintenance(
     return { success: SUCCESS };
   }
 
-  const parsed = schema.safeParse({
-    name: String(formData.get("name") ?? ""),
-    email: String(formData.get("email") ?? ""),
+  const issue = {
     categoryId: formData.get("categoryId"),
     location: formData.get("location"),
     description: formData.get("description"),
-  });
+  };
+  // Inloggad behövs varken namn eller e-post: ärendet kopplas till kontot och
+  // styrelsen svarar på Mina sidor. Lägenhetens konto har inget namn och ingen
+  // riktig e-post; en ledamots konto har båda.
+  const parsed = user
+    ? issueSchema.safeParse(issue)
+    : guestSchema.safeParse({
+        ...issue,
+        name: String(formData.get("name") ?? ""),
+        email: String(formData.get("email") ?? ""),
+      });
 
   if (!parsed.success) {
     return {
@@ -59,11 +71,20 @@ export async function submitMaintenance(
     };
   }
 
-  // En inloggad anmälare kopplas till ärendet, så att det syns på Mina sidor
-  // och medlemmen kan aviseras. Kopplingen tas från sessionen – ett dolt fält
-  // i formuläret skulle låta vem som helst lägga ärenden på någon annan.
+  const contact = user
+    ? user.apartmentNumber
+      ? { name: "", email: "" }
+      : { name: user.fullName, email: user.email }
+    : { name: "", email: "", ...parsed.data };
+
+  // Kopplingen till kontot tas från sessionen – ett dolt fält i formuläret
+  // skulle låta vem som helst lägga ärenden på någon annan.
   const result = await createMaintenanceRequest({
-    ...parsed.data,
+    categoryId: parsed.data.categoryId,
+    location: parsed.data.location,
+    description: parsed.data.description,
+    name: contact.name,
+    email: contact.email,
     phone: "",
     memberId: user?.id ?? null,
   });
@@ -72,7 +93,9 @@ export async function submitMaintenance(
   await notifyMaintenance({
     category: result.request.categoryName,
     location: result.request.location,
-    name: result.request.name || "Anonym anmälare",
+    name: user?.apartmentNumber
+      ? `Lägenhet ${user.apartmentNumber}`
+      : result.request.name || "Anonym anmälare",
   });
 
   // Numret gör det lätt att hänvisa till ärendet. Inloggade kan dessutom följa
@@ -80,7 +103,7 @@ export async function submitMaintenance(
   const number = result.request.number;
   const reference = number != null ? ` Ärendenummer: #${number}.` : "";
   const follow = user
-    ? " Du kan följa ärendet och läsa styrelsens svar under Mina sidor."
+    ? " Ni följer ärendet och läser styrelsens svar under Mina sidor."
     : "";
   return { success: `${SUCCESS}${reference}${follow}` };
 }

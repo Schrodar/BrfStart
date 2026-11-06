@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireApprovedMember } from "@/lib/auth";
-import { getOrCreateOwnedApartment } from "@/lib/data";
+import { getOwnedApartment } from "@/lib/data";
 import { Badge, Card, CardBody } from "@/components/ui";
 import { FactsForm } from "@/components/apartment/facts-form";
 import { FloorPlanManager } from "@/components/apartment/floor-plan-manager";
@@ -15,22 +16,10 @@ import {
 
 export default async function MyApartmentPage() {
   const user = await requireApprovedMember();
-  const apartment = await getOrCreateOwnedApartment({
-    id: user.id,
-    apartment: user.apartment,
-  });
-
-  if (!apartment) {
-    return (
-      <Card>
-        <CardBody className="py-8 text-center text-sm text-muted">
-          Vi kunde inte koppla dig till en lägenhet
-          {user.apartment ? ` (nummer ${user.apartment})` : " (lägenhetsnummer saknas)"}.
-          Kontakta styrelsen så hjälper de dig.
-        </CardBody>
-      </Card>
-    );
-  }
+  // Lägenheten hör till kontot – den skapas aldrig och tas aldrig över via ett
+  // nummer. Konton utan lägenhet (styrelsens) har ingen Min lägenhet.
+  const apartment = await getOwnedApartment(user.id);
+  if (!apartment) redirect("/medlem");
 
   return (
     <div className="space-y-8">
@@ -42,7 +31,7 @@ export default async function MyApartmentPage() {
       <Card>
         <CardBody className="space-y-4">
           <h3 className="font-semibold">Lägenhetsfakta</h3>
-          <FactsForm apartment={apartment} action={updateFactsAction} />
+          <FactsForm apartment={apartment} action={updateFactsAction} editNumbers={false} />
         </CardBody>
       </Card>
 
