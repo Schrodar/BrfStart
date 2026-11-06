@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getActivation, redeemInvitation } from "@/lib/data";
+import { getActivation, redeemAccessCode, redeemInvitation } from "@/lib/data";
+import { clientIp, isRateLimited, recordFailure } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export interface ActivateState {
@@ -80,4 +81,63 @@ export async function activateAction(
   if (error) redirect("/logga-in");
 
   redirect(result.role === "admin" ? "/admin" : "/medlem");
+}
+
+// ---------------------------------------------------------------------------
+// Lägenhetens kod (brevet i brevlådan)
+// ---------------------------------------------------------------------------
+
+const codeSchema = z
+  .object({
+    code: z.string().trim().min(1, "Skriv koden från brevet."),
+    password: z.string().min(8, "Lösenordet måste vara minst 8 tecken."),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, {
+    message: "Lösenorden är inte likadana.",
+    path: ["confirm"],
+  });
+
+/** Högst tio felaktiga koder per IP och kvart – koden går inte att pröva fram. */
+const CODE_ATTEMPTS = 10;
+const CODE_WINDOW_MS = 15 * 60_000;
+
+/**
+ * Skapar lägenhetens konto med koden, eller ger det en ny inloggning om det
+ * redan finns, och loggar in direkt till Mina sidor.
+ */
+export async function activateWithCodeAction(
+  _prev: ActivateState,
+  formData: FormData,
+): Promise<ActivateState> {
+  const parsed = codeSchema.safeParse({
+    code: formData.get("code"),
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Kontrollera formuläret." };
+  }
+
+  const key = `kod:${await clientIp()}`;
+  if (isRateLimited(key, CODE_ATTEMPTS, CODE_WINDOW_MS)) {
+    return { error: "För många försök. Vänta en kvart och försök igen." };
+  }
+
+  const { code, password } = parsed.data;
+  const result = await redeemAccessCode(code, password);
+  if (!result.ok) {
+    if (result.wrongCode) recordFailure(key, CODE_WINDOW_MS);
+    return { error: result.error };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: result.email,
+    password,
+  });
+  // Kontot är klart även om inloggningen inte gick – då loggar man in själv.
+  if (error) redirect("/logga-in");
+
+  redirect("/medlem");
 }

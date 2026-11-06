@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getMemberByEmail, registerMember } from "@/lib/data";
+import {
+  getLoginEmailForApartment,
+  getMemberByEmail,
+  registerMember,
+} from "@/lib/data";
 import { safeNextPath } from "@/lib/utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -15,29 +19,42 @@ export interface AuthState {
 }
 
 const loginSchema = z.object({
-  email: z.string().email("Ange en giltig e-postadress."),
+  identifier: z.string().trim().min(1, "Ange lägenhetsnummer eller e-post."),
   password: z.string().min(1, "Ange ditt lösenord."),
 });
 
+/** Samma svar oavsett vad som var fel – annars går det att pröva fram vilka lägenheter som har konto. */
+const WRONG_LOGIN = "Fel lägenhetsnummer, e-post eller lösenord.";
+
+/**
+ * Boende loggar in med lägenhetsnummer – lägenhetens konto har en intern
+ * adress som slås upp här. Styrelsen loggar in med sin e-post.
+ */
 export async function loginAction(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
+    identifier: formData.get("identifier"),
     password: formData.get("password"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Ogiltiga uppgifter." };
   }
 
+  const { identifier, password } = parsed.data;
+  const email = identifier.includes("@")
+    ? identifier
+    : await getLoginEmailForApartment(identifier);
+  if (!email) return { error: WRONG_LOGIN };
+
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     if (error.message.toLowerCase().includes("not confirmed")) {
       return { error: "E-postadressen är inte bekräftad ännu." };
     }
-    return { error: "Fel e-post eller lösenord." };
+    return { error: WRONG_LOGIN };
   }
 
   // Inloggningen är gemensam för alla föreningar (samma Supabase-projekt), men
@@ -46,7 +63,7 @@ export async function loginAction(
   // förenings sida ska få veta det. Admins och boende som läggs upp utan
   // registrering bjuds in (JnM-panelen eller scripts/invite-admin.ts) och
   // skapas först när de har valt lösenord på /aktivera.
-  const member = await getMemberByEmail(parsed.data.email);
+  const member = await getMemberByEmail(email);
   if (!member) {
     await supabase.auth.signOut();
     return {

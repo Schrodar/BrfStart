@@ -700,11 +700,19 @@ model Apartment {
   /// när annonsen publiceras eller den boende tar tillbaka den.
   submittedAt           DateTime?
 
+  /// Lägenhetens kod (sha256). Koden skapar lägenhetens konto på /aktivera, och
+  /// samma kod igen ger kontot en ny inloggning. Själva koden finns bara i
+  /// brevet – den visas en gång när den skapas. Null = ingen kod.
+  accessCodeHash      String?
+  accessCodeCreatedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   photos ApartmentPhoto[]
 
+  /// Koden slås bara upp inom föreningen. Flera null krockar inte.
+  @@unique([associationId, accessCodeHash])
   @@unique([associationId, number])
   @@index([associationId, buildingId, number])
   @@index([associationId, forSale, listingStatus])

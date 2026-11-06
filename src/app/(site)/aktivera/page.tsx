@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import { getActivation } from "@/lib/data";
 import { Card, CardBody, Container, Section } from "@/components/ui";
 import { ActivateForm } from "./activate-form";
+import { CodeForm } from "./code-form";
 
 /**
- * Inbjudningar från JnM-panelen och styrelsen. Länken bär en engångstoken i
- * adressen, så sidan skickar aldrig vidare den i en referrer och ska inte
- * indexeras.
+ * Två vägar in:
+ *   - utan token: lägenhetens kod från brevet i brevlådan (boende)
+ *   - med token: en inbjudan från JnM-panelen (styrelsens personliga konton)
+ *
+ * Inbjudningslänken bär en engångstoken i adressen, så sidan skickar aldrig
+ * vidare den i en referrer och ska inte indexeras.
  */
 export const metadata: Metadata = {
   title: "Aktivera konto",
@@ -14,12 +18,39 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+function CodeActivation() {
+  return (
+    <Section>
+      <Container className="max-w-md">
+        <h1 className="title-page text-center text-[2.5rem] sm:text-[3rem]">
+          Aktivera kontot
+        </h1>
+        <p className="mt-2 text-center text-sm text-muted">
+          Skriv koden från brevet och välj ett lösenord. Sedan loggar du in med
+          lägenhetsnumret och lösenordet.
+        </p>
+        <Card className="mt-6">
+          <CardBody>
+            <CodeForm />
+          </CardBody>
+        </Card>
+        <p className="mt-4 text-center text-xs text-muted">
+          Glömt lösenordet? Använd koden igen. Har ni tappat brevet får
+          lägenheten en ny kod – kontakta styrelsen.
+        </p>
+      </Container>
+    </Section>
+  );
+}
+
 export default async function ActivatePage({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token = "" } = await searchParams;
+  if (!token) return <CodeActivation />;
+
   const activation = await getActivation(token);
   const invitation = activation?.invitation;
   const step =

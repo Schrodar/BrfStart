@@ -3,6 +3,7 @@ import { getTenantDb } from "@/lib/tenant";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { knowsPassword } from "@/lib/supabase/password-check";
 import type { Role } from "@/lib/types";
+import { findAuthUserId } from "./auth-users";
 
 /**
  * Inbjudningar till föreningen. De skapas i JnM-panelen eller av styrelsen
@@ -30,19 +31,6 @@ function openWhere(token: string) {
     revokedAt: null,
     expiresAt: { gt: new Date() },
   };
-}
-
-type TenantDb = Awaited<ReturnType<typeof getTenantDb>>["db"];
-
-/**
- * Id för inloggningskontot med den här adressen, om det finns. Rå SQL mot
- * auth-schemat går förbi tenant-extensionen, men auth.users är inte
- * föreningsdata – konton är gemensamma för alla föreningar.
- */
-async function findAccountId(db: TenantDb, email: string): Promise<string | null> {
-  const rows = await db.$queryRaw<{ id: string }[]>`
-    SELECT id::text AS id FROM auth.users WHERE lower(email) = ${email.toLowerCase()} LIMIT 1`;
-  return rows[0]?.id ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +180,7 @@ export async function getActivation(
   if (!row) return null;
 
   const { resetsPassword, ...invitation } = row;
-  const accountId = await findAccountId(db, row.email);
+  const accountId = await findAuthUserId(row.email);
   const mode: ActivationMode = !accountId ? "new" : resetsPassword ? "reset" : "verify";
   return { invitation, mode };
 }
@@ -243,7 +231,7 @@ export async function redeemInvitation(
 
   const email = invitation.email;
   const admin = createSupabaseAdminClient();
-  const accountId = await findAccountId(db, email);
+  const accountId = await findAuthUserId(email);
 
   if (!accountId) {
     const { error } = await admin.auth.admin.createUser({

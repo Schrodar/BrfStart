@@ -29,6 +29,11 @@ export interface CurrentUser {
   role: Role;
   status: MemberStatus;
   canManageListing: boolean;
+  /**
+   * Numret på lägenheten kontot hör till – lägenhetens konto, skapat med koden
+   * i brevet. Null för styrelsens personliga konton och supportläget.
+   */
+  apartmentNumber: string | null;
 }
 
 /** Nyhet / aktuellt-inlägg. */
@@ -377,6 +382,9 @@ export interface Apartment {
   publishedAt: string | null;
   /** Den boende har skickat utkastet till styrelsen för publicering. */
   submittedAt: string | null;
+
+  /** När lägenhetens kod skapades. Null = ingen kod. Själva koden lämnar aldrig servern. */
+  accessCodeCreatedAt: string | null;
 
   createdAt: string;
   updatedAt: string;

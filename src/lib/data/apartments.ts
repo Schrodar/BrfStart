@@ -56,6 +56,9 @@ function toApartment(
     showFloorPlanPublicly: a.showFloorPlanPublicly,
     publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
     submittedAt: a.submittedAt ? a.submittedAt.toISOString() : null,
+    accessCodeCreatedAt: a.accessCodeCreatedAt
+      ? a.accessCodeCreatedAt.toISOString()
+      : null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
     photos: a.photos.map(toPhoto),
@@ -163,6 +166,18 @@ export async function getPublicFloorPlanPath(
     select: { floorPlanPath: true },
   });
   return a?.floorPlanPath ?? null;
+}
+
+/** Numret på lägenheten kontot äger, utan något mer – för inloggningen. */
+export async function getOwnedApartmentNumber(
+  memberId: string,
+): Promise<string | null> {
+  const { db } = await getTenantDb();
+  const a = await db.apartment.findFirst({
+    where: { ownerMemberId: memberId },
+    select: { number: true },
+  });
+  return a?.number ?? null;
 }
 
 export async function getOwnedApartment(

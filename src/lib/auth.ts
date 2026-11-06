@@ -14,7 +14,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { CurrentUser } from "@/lib/types";
-import { getMemberByEmail } from "@/lib/data";
+import { getMemberByEmail, getOwnedApartmentNumber } from "@/lib/data";
 import {
   getActiveSupportSession,
   SUPPORT_COOKIE,
@@ -44,6 +44,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     role: member.role,
     status: member.status,
     canManageListing: member.canManageListing,
+    apartmentNumber: await getOwnedApartmentNumber(member.id),
   };
 });
 
@@ -81,6 +82,7 @@ function supportUser(session: ActiveSupportSession): CurrentUser {
     role: "admin",
     status: "approved",
     canManageListing: false,
+    apartmentNumber: null,
   };
 }
 

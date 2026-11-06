@@ -25,14 +25,20 @@ export function LoginForm({ next }: { next: string | null }) {
       {/* Sidan besökaren skickades hit ifrån, kontrollerad av safeNextPath. */}
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
-      <Field label="E-post" htmlFor="email" required>
+      <Field
+        label="Lägenhetsnummer"
+        htmlFor="identifier"
+        required
+        hint="Står i brevet från föreningen. Styrelsen loggar in med sin e-post."
+      >
         <Input
-          id="email"
-          name="email"
-          type="email"
+          id="identifier"
+          name="identifier"
           required
-          autoComplete="email"
-          placeholder="din@epost.se"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="t.ex. 23"
         />
       </Field>
 
@@ -49,16 +55,15 @@ export function LoginForm({ next }: { next: string | null }) {
 
       <SubmitButton />
 
-      <p className="text-center text-sm text-muted">
-        Har du inget konto?{" "}
-        <Link href="/registrera" className="link-inline">
-          Registrera dig
-        </Link>
-      </p>
-
-      <p className="text-center text-xs text-muted">
-        Endast för boende och styrelse. Nya konton godkänns av styrelsen.
-      </p>
+      <div className="space-y-1.5 text-center text-sm text-muted">
+        <p>
+          Inget konto än?{" "}
+          <Link href="/aktivera" className="link-inline">
+            Aktivera med koden i brevet
+          </Link>
+        </p>
+        <p>Glömt lösenordet? Använd koden igen och välj ett nytt.</p>
+      </div>
     </form>
   );
 }
