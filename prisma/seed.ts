@@ -38,22 +38,8 @@ async function main() {
         status: "approved",
         createdAt: daysAgo(120),
       },
-      {
-        associationId,
-        email: "boende@example.se",
-        fullName: "Bertil Boende",
-        role: "member",
-        status: "approved",
-        createdAt: daysAgo(60),
-      },
-      {
-        associationId,
-        email: "ny.granne@example.se",
-        fullName: "Cecilia Nyinflyttad",
-        role: "member",
-        status: "pending",
-        createdAt: daysAgo(2),
-      },
+      // Inga boendekonton: varje lägenhet får sitt konto med koden i brevet
+      // (Admin → Fastigheten i supportläget, sedan /aktivera).
     ],
   });
 

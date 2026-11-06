@@ -60,34 +60,52 @@ npm run dev
 
 ### Konton och inloggning
 
-Inloggning sker med **Supabase Auth** (e-post + lösenord). Nya boende registrerar
-sig via **Registrera** och får status "väntar på godkännande" tills styrelsen
-godkänner dem under **Admin → Styrelse → Användare & behörigheter**. Registreringen skapar auth-användaren
-via Supabase Admin-API med bekräftad e-post – ingen e-postbekräftelse behövs
-eftersom styrelsens godkännande är grinden.
+Inloggning sker med **Supabase Auth**. Det finns ingen registrering och inget
+godkännande.
 
-Kontona är gemensamma för alla föreningar, och e-posten bekräftas inte. Därför
-gäller två regler vid registrering:
+- **De boende** har ett konto per lägenhet, utan namn och e-post. JnM lägger
+  upp husen och lägenheterna i föreningens adminpanel via supportläget
+  (Fastigheten → Hus och lägenheter) och skapar en kod per lägenhet. Breven
+  skrivs ut direkt från sidan, ett per brevlåda. Koderna visas bara då – bara
+  deras hash sparas.
+- Koden löses in på `/aktivera`: den boende väljer ett lösenord och
+  lägenhetens konto skapas. Sedan loggar man in med **lägenhetsnummer och
+  lösenord**. Samma kod igen ger kontot ett nytt lösenord och loggar ut alla
+  enheter – så återställs ett glömt lösenord. Högst tio felaktiga koder per IP
+  och kvart.
+- **Tappad kod:** JnM skapar en ny kod på lägenhetens sida (den gamla slutar
+  gälla) och ett nytt brev går till brevlådan – aldrig till en e-postadress.
+- **Ägarbyte:** kontot raderas så att säljaren loggas ut, annonsen rensas och
+  koden slutar gälla. JnM gör det på lägenhetens sida och skriver ut köparens
+  brev. Styrelsens "Försäljningen är klar" under Till salu gör samma sak, och
+  köparens brev kommer sedan från JnM.
+- **Styrelsen** har personliga konton med e-post och loggar in med e-posten.
+  JnM bjuder in ledamöterna från JnM-panelen, under Admins i supportläget,
+  eller med:
 
-- Finns e-postadressen redan i föreningen skapas inget konto.
-- Har adressen redan ett konto (t.ex. hos en annan förening) kopplas den nya
-  medlemmen bara till kontot om den som registrerar sig skriver in kontots
-  lösenord. Annars kunde någon skapa ett konto i en annans namn i förväg och
-  sedan logga in som hen.
+  ```bash
+  npm run admin:invite -- brf-min-forening din@epost.se https://min-forening.se "Ditt Namn"
+  ```
 
-Admin-rollen kräver dessutom status "godkänd".
+  Skriptet skriver ut en engångslänk till föreningens `/aktivera`. Där väljer
+  personen sitt lösenord, och först då skapas kontot och admin-raden.
 
-**Skapa den första administratören** – bjud in hen från JnM-panelen, eller kör:
+Sajten mejlar aldrig de boende: styrelsens svar och nya statusar syns på Mina
+sidor. Det enda mejlet går till styrelsen när en felanmälan kommer in.
 
-```bash
-npm run admin:invite -- brf-min-forening din@epost.se https://min-forening.se "Ditt Namn"
-```
+**Supportläget** öppnas med en engångslänk från JnM-panelen, eller med
+`npm run support:link -- <slug> <plattformsadmin-e-post> <sajtens-adress>`.
+Hus, lägenheter, koder och admins finns bara där. Allt som ändras under
+supportläget syns för styrelsen i Admin → Supportlogg.
 
-Skriptet skriver ut en engångslänk till föreningens `/aktivera`. Där väljer
-personen sitt lösenord, och först då skapas kontot och admin-raden.
+**Övergång från registreringen:** gamla personliga boendekonton kan logga in
+med e-post tills breven har delats ut. Ett sådant konto tas bort när
+lägenhetens kod används första gången. De som blir kvar tas bort med
+`npm run members:legacy -- <slug> --bekrafta` (utan `--bekrafta` visas bara
+vilka det gäller), och därefter `npm run users:prune`.
 
-> Obs: seed-datans medlemmar (t.ex. `boende@example.se`) är enbart visningsdata –
-> för att logga in krävs ett riktigt konto i Supabase Auth.
+> Obs: seed-datans konton är enbart visningsdata – för att logga in krävs ett
+> riktigt konto i Supabase Auth.
 
 ## Multi-tenant
 
@@ -100,6 +118,13 @@ ligger på föreningsraden i databasen och redigeras av styrelsen i adminpanelen
 Isoleringen sköts centralt av `src/lib/tenant.ts`: `getTenantDb()` ger en
 Prisma-klient som **automatiskt filtrerar alla läsningar på `associationId`** (och
 sätter det vid skrivning). Sidor, komponenter och actions är omedvetna om tenancy.
+
+Lägenheternas koder och konton följer samma isolering. En kod slås bara upp i
+sin egen förening, och lägenhetsnumret vid inloggning söks bara bland den
+egna föreningens lägenheter. Inloggningskontona i Supabase Auth delas av alla
+föreningar, så lägenhetens interna adress bygger på lägenhetens id, som är
+unikt i hela databasen. En ny förening kräver alltså ingen egen databas,
+inget eget Supabase-projekt och ingen mejltjänst.
 
 Lägg till en ny förening (ny deploy):
 
@@ -177,17 +202,24 @@ applikationens *Resource Limits*.
 - Felanmälan (formulär → e-post till styrelsen)
 - Kontakt, Integritetspolicy
 
-**Medlemsområde** (inloggning krävs, konto måste vara godkänt)
+**Mina sidor** (lägenhetens konto, skapat med koden i brevet)
 
+- Felanmälningar med status och styrelsens svar
 - Interna dokument (t.ex. protokoll)
-- Bokning av tvättstuga med tidspass och dubbelbokningsspärr
+- Min lägenhet: fakta, planritning och bilder
+- Sälja bostaden: annonsen skickas till styrelsen, eller publiceras av kontot
+  självt med annonsrätt
 
-**Adminpanel** (endast styrelse) – styrelsen redigerar allt själv:
+**Adminpanel** (styrelsen) – styrelsen redigerar allt själv:
 
 - Nyheter, dokument, styrelse/valberedning, föreningsfakta, sidtexter
-- Hantera felanmälningar (status)
-- Godkänna/hantera medlemmar
-- Översikt över bokningar
+- Felanmälningar (status, svar till anmälaren, mötesläge)
+- Till salu (annonser och annonsrätt) och trapphustavlor
+
+**Supportläge** (JnM)
+
+- Hus och lägenheter, koder och brev, ny kod och ägarbyte
+- Styrelsens admin-konton
 
 ## Anpassa för en ny förening
 
@@ -228,7 +260,7 @@ src/
   app/
     (publika sidor)      page.tsx, om-foreningen, styrelse, nyheter, dokument,
                          for-maklare, felanmalan, kontakt, integritetspolicy
-    logga-in, registrera Inloggning och självregistrering
+    logga-in, aktivera   Inloggning och aktivering med koden i brevet
     medlem/              Inloggat medlemsområde (skyddat)
     admin/               Adminpanel (skyddad, endast styrelse)
   components/
@@ -274,4 +306,8 @@ npm run db:push    # synka schema till databasen (utan migrationsfiler)
 npm run db:migrate # skapa/apply migration (dev)
 npm run db:seed    # seeda demoinnehåll
 npm run db:studio  # Prisma Studio (bläddra i datan)
+npm run admin:invite    # bjud in en styrelseadmin (engångslänk)
+npm run support:link    # supportlänk till en förenings adminpanel
+npm run members:legacy  # ta bort gamla personliga boendekonton (torrkörning utan --bekrafta)
+npm run users:prune     # ta bort inloggningar som inte hör till någon förening
 ```

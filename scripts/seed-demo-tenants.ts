@@ -92,10 +92,10 @@ interface TenantCfg {
   /** Utelämnad = föreningen sköter förvaltningen själv (förvaltarrutorna döljs). */
   propertyManager?: { name: string; phone: string; email: string };
   admin: Person;
-  boende: Person;
+  /** Demolägenhetens nummer. Dess konto loggar in med numret och DEMO_PASSWORD. */
+  boende: { apartment: string };
   /** Gruppnamnet skapas som en BoardGroup-rad. Fritt val, t.ex. "Trädgårdsgruppen". */
   board: { group: string; role: string; name: string; email?: string }[];
-  pending: { email: string; fullName: string; apartment: string }[];
   news: { slug: string; title: string; excerpt: string; body: string; days: number }[];
   listing: {
     number: string;
@@ -193,41 +193,43 @@ async function seedTenant(cfg: TenantCfg) {
   });
 
   await ensureAuthUser(cfg.admin.email, demoPassword);
-  await ensureAuthUser(cfg.boende.email, demoPassword);
 
-  await prisma.member.createMany({
-    data: [
-      {
-        associationId,
-        email: cfg.admin.email,
-        fullName: cfg.admin.fullName,
-        apartment: cfg.admin.apartment,
-        role: "admin",
-        status: "approved",
-        canManageListing: true,
-        createdAt: daysAgo(90),
-      },
-      {
-        associationId,
-        email: cfg.boende.email,
-        fullName: cfg.boende.fullName,
-        apartment: cfg.boende.apartment,
-        role: "member",
-        status: "approved",
-        canManageListing: true,
-        createdAt: daysAgo(45),
-      },
-      ...cfg.pending.map((p) => ({
-        associationId,
-        email: p.email,
-        fullName: p.fullName,
-        apartment: p.apartment,
-        role: "member" as const,
-        status: "pending" as const,
-        canManageListing: false,
-        createdAt: daysAgo(2),
-      })),
-    ],
+  await prisma.member.create({
+    data: {
+      associationId,
+      email: cfg.admin.email,
+      fullName: cfg.admin.fullName,
+      apartment: cfg.admin.apartment,
+      role: "admin",
+      status: "approved",
+      canManageListing: true,
+      createdAt: daysAgo(90),
+    },
+  });
+
+  // Lägenhetens konto, som om koden i brevet hade använts: inget namn och en
+  // intern adress. Logga in med lägenhetsnumret och DEMO_PASSWORD.
+  const home = await prisma.apartment.create({
+    data: { associationId, number: cfg.boende.apartment },
+  });
+  // Samma form som apartmentAccountEmail() i src/lib/data/access-codes.ts.
+  const homeEmail = `lgh-${home.id}@konto.invalid`;
+  await ensureAuthUser(homeEmail, demoPassword);
+  const homeAccount = await prisma.member.create({
+    data: {
+      associationId,
+      email: homeEmail,
+      fullName: `Lägenhet ${cfg.boende.apartment}`,
+      apartment: cfg.boende.apartment,
+      role: "member",
+      status: "approved",
+      canManageListing: true,
+      createdAt: daysAgo(45),
+    },
+  });
+  await prisma.apartment.update({
+    where: { id: home.id },
+    data: { ownerMemberId: homeAccount.id },
   });
 
   await prisma.newsPost.createMany({
@@ -282,7 +284,7 @@ const tenants: TenantCfg[] = [
       email: "kundtjanst@solforvaltning.se",
     },
     admin: { email: "styrelse@solglantan.se", fullName: "Sara Ordförande", apartment: "1201" },
-    boende: { email: "boende@solglantan.se", fullName: "Sven Boende", apartment: "0302" },
+    boende: { apartment: "0302" },
     board: [
       { group: "Styrelsen", role: "Ordförande", name: "Sara Ordförande", email: "styrelse@solglantan.se" },
       { group: "Styrelsen", role: "Kassör", name: "Karl Kassör" },
@@ -290,7 +292,6 @@ const tenants: TenantCfg[] = [
       { group: "Styrelsen", role: "Ledamot", name: "Lars Ledamot" },
       { group: "Valberedning", role: "Sammankallande", name: "Vera Valberedare" },
     ],
-    pending: [{ email: "nina.ny@solglantan.se", fullName: "Nina Nyinflyttad", apartment: "0405" }],
     news: [
       { slug: "sommarfest", title: "Sommarfest på innergården", excerpt: "Välkommen på grillfest lördag 16 augusti.", body: "Alla boende hälsas välkomna till sommarfesten på innergården.\n\nTa med något att grilla – föreningen bjuder på dryck.", days: 5 },
       { slug: "atervinning", title: "Ny återvinningsstation i källaren", excerpt: "Nu kan du sortera glas, metall och kartong i källaren.", body: "Den nya återvinningsstationen är på plats i källaren under trapphus A.", days: 20 },
@@ -305,7 +306,7 @@ const tenants: TenantCfg[] = [
     street: "Björkgatan 8",
     postalCode: "222 33",
     admin: { email: "styrelse@bjorken.se", fullName: "Björn Ordförande", apartment: "0101" },
-    boende: { email: "boende@bjorken.se", fullName: "Bodil Boende", apartment: "0204" },
+    boende: { apartment: "0204" },
     board: [
       { group: "Styrelsen", role: "Ordförande", name: "Björn Ordförande", email: "styrelse@bjorken.se" },
       { group: "Styrelsen", role: "Kassör", name: "Kerstin Kassör" },
@@ -313,7 +314,6 @@ const tenants: TenantCfg[] = [
       { group: "Styrelsen", role: "Suppleant", name: "Sonja Suppleant" },
       { group: "Valberedning", role: "Sammankallande", name: "Valter Valberedare" },
     ],
-    pending: [{ email: "nils.ny@bjorken.se", fullName: "Nils Nyinflyttad", apartment: "0310" }],
     news: [
       { slug: "stamspolning", title: "Stamspolning i höst", excerpt: "Föreningen genomför stamspolning i oktober.", body: "Stamspolning av avloppen genomförs vecka 42. Mer information kommer i brevlådan.", days: 8 },
       { slug: "cykelstall", title: "Nya cykelställ vid entrén", excerpt: "Fler cykelplatser är nu på plats utanför entrén.", body: "Vi har kompletterat med nya cykelställ vid huvudentrén.", days: 25 },
