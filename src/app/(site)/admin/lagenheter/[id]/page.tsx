@@ -1,35 +1,56 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getApartmentById } from "@/lib/data";
+import { requireSupport } from "@/lib/auth";
+import {
+  getApartmentAccount,
+  getApartmentById,
+  getAssociationProfile,
+} from "@/lib/data";
+import type { ApartmentAccount } from "@/lib/data/access-codes";
+import { formatDate } from "@/lib/utils";
 import { Card, CardBody, PageHeader } from "@/components/ui";
 import { FactsForm } from "@/components/apartment/facts-form";
 import { FloorPlanManager } from "@/components/apartment/floor-plan-manager";
 import {
+  changeOwnerAction,
   deleteApartmentAction,
-  releaseApartmentAction,
+  newCodeAction,
   removeFloorPlanAction,
   updateFactsAction,
   uploadFloorPlanAction,
 } from "../actions";
+import { CodeLettersButton } from "../code-letters";
 import { startListingAction } from "../../till-salu/actions";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
+function accountText(account: ApartmentAccount | null): string {
+  if (!account) return "Inte aktiverat ännu.";
+  if (account.kind === "personal") {
+    return "Ett personligt konto från tiden med registrering. Det ersätts när lägenhetens kod används.";
+  }
+  return `Aktiverat ${formatDate(account.activatedAt)}.`;
+}
+
 export default async function AdminApartmentEditPage({ params }: Props) {
+  await requireSupport();
   const { id } = await params;
-  const apartment = await getApartmentById(id);
+  const [apartment, account, profile] = await Promise.all([
+    getApartmentById(id),
+    getApartmentAccount(id),
+    getAssociationProfile(),
+  ]);
   if (!apartment) notFound();
+  const sender = { name: profile.name, contactEmail: profile.contactEmail };
 
   return (
     <div className="space-y-8">
       <PageHeader
         title={`Lägenhet ${apartment.number}`}
         description={
-          apartment.ownerMemberId
-            ? "Hanteras även av en boende."
-            : "Skapad av styrelsen."
+          account ? "Lägenheten har ett konto." : "Lägenheten har inget konto ännu."
         }
         actions={
           <form action={deleteApartmentAction}>
@@ -93,27 +114,55 @@ export default async function AdminApartmentEditPage({ params }: Props) {
         </CardBody>
       </Card>
 
-      {apartment.ownerMemberId ? (
-        <Card className="border-red-200">
-          <CardBody className="flex flex-wrap items-center justify-between gap-4">
-            <div className="max-w-xl">
-              <h3 className="font-semibold">Registrera ägarbyte</h3>
-              <p className="mt-1 text-sm text-muted">
-                Använd när lägenheten har bytt ägare. Annonsen och alla bilder
-                raderas, och den boende kopplas bort från lägenheten. Fakta och
-                planritning ligger kvar och följer med till nästa ägare. Går inte
-                att ångra.
-              </p>
-            </div>
-            <form action={releaseApartmentAction}>
-              <input type="hidden" name="apartmentId" value={apartment.id} />
-              <button className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
-                Registrera ägarbyte
-              </button>
-            </form>
-          </CardBody>
-        </Card>
-      ) : null}
+      <Card>
+        <CardBody className="space-y-5">
+          <div>
+            <h3 className="font-semibold">Kod och konto</h3>
+            <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[8rem_1fr]">
+              <dt className="text-muted">Kod</dt>
+              <dd>
+                {apartment.accessCodeCreatedAt
+                  ? `Skapad ${formatDate(apartment.accessCodeCreatedAt)}.`
+                  : "Ingen kod ännu."}
+              </dd>
+              <dt className="text-muted">Konto</dt>
+              <dd>{accountText(account)}</dd>
+            </dl>
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-5">
+            <p className="text-sm text-muted">
+              Tappad kod: lägenheten får en ny, och den gamla slutar gälla. Kontot
+              finns kvar tills någon använder den nya koden.
+            </p>
+            <CodeLettersButton
+              action={newCodeAction}
+              fields={{ apartmentId: apartment.id }}
+              label={apartment.accessCodeCreatedAt ? "Ny kod" : "Skapa kod"}
+              pendingText="Skapar kod…"
+              variant="secondary"
+              sender={sender}
+            />
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-5">
+            <p className="text-sm text-muted">
+              Ägarbyte: kontot raderas och säljaren loggas ut, annonsen och
+              bilderna raderas och lägenheten får en ny kod – brevet till
+              köparen. Fakta och planritning ligger kvar.
+            </p>
+            <CodeLettersButton
+              action={changeOwnerAction}
+              fields={{ apartmentId: apartment.id }}
+              label="Registrera ägarbyte"
+              pendingText="Registrerar…"
+              variant="danger"
+              confirmText="Lägenhetens konto raderas och alla som är inloggade loggas ut. Annonsen och bilderna raderas, och den gamla koden slutar gälla. Går inte att ångra."
+              sender={sender}
+            />
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }

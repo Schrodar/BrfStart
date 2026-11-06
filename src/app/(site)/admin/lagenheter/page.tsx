@@ -1,8 +1,15 @@
 import Link from "next/link";
-import { getBuildingsWithCounts, getUnassignedApartments } from "@/lib/data";
+import { requireSupport } from "@/lib/auth";
+import {
+  getAllApartments,
+  getAssociationProfile,
+  getBuildingsWithCounts,
+  getUnassignedApartments,
+} from "@/lib/data";
 import type { BuildingWithCounts } from "@/lib/types";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import { BuildingManager } from "./building-manager";
+import { CodeSection } from "./code-section";
 
 function BuildingCard({ building }: { building: BuildingWithCounts }) {
   return (
@@ -35,9 +42,12 @@ function BuildingCard({ building }: { building: BuildingWithCounts }) {
 }
 
 export default async function AdminApartmentsPage() {
-  const [buildings, unassigned] = await Promise.all([
+  await requireSupport();
+  const [buildings, unassigned, apartments, profile] = await Promise.all([
     getBuildingsWithCounts(),
     getUnassignedApartments(),
+    getAllApartments(),
+    getAssociationProfile(),
   ]);
 
   const total =
@@ -49,7 +59,7 @@ export default async function AdminApartmentsPage() {
         title="Lägenheter"
         description={`Föreningens fastighet, hus för hus. ${total} ${
           total === 1 ? "lägenhet" : "lägenheter"
-        } i registret.`}
+        } i registret. Bara du ser sidan, i supportläget.`}
       />
 
       {buildings.length === 0 && unassigned.length === 0 ? (
@@ -84,6 +94,13 @@ export default async function AdminApartmentsPage() {
           ) : null}
         </div>
       )}
+
+      <CodeSection
+        apartments={apartments}
+        scope=""
+        sender={{ name: profile.name, contactEmail: profile.contactEmail }}
+        title="Koder och brev"
+      />
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Hus</h2>

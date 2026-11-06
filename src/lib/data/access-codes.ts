@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { getTenantDb } from "@/lib/tenant";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { compareApartmentNumbers } from "@/lib/numbering";
+import { releaseApartment } from "./apartments";
 import { findAuthUserId } from "./auth-users";
 
 /**
@@ -243,4 +244,123 @@ export async function getLoginEmailForApartment(
   // Personliga konton (styrelsen, och boende från tiden med registrering)
   // loggar in med sin e-post – aldrig med lägenhetsnumret.
   return email && isApartmentAccountEmail(email) ? email : null;
+}
+
+// ---------------------------------------------------------------------------
+// Kontot på lägenheten (adminpanelen)
+// ---------------------------------------------------------------------------
+
+export interface ApartmentAccount {
+  memberId: string;
+  /**
+   * apartment = lägenhetens eget konto (skapat med koden).
+   * personal  = ett personligt konto: en boende från tiden med registrering,
+   *             eller en ledamot som kopplats till lägenheten.
+   */
+  kind: "apartment" | "personal";
+  /** När kontot skapades – för lägenhetens konto när koden användes första gången. */
+  activatedAt: string;
+  canManageListing: boolean;
+}
+
+/** Kontot som hör till lägenheten, eller null om ingen har aktiverat det. */
+export async function getApartmentAccount(
+  apartmentId: string,
+): Promise<ApartmentAccount | null> {
+  const { db } = await getTenantDb();
+  const apartment = await db.apartment.findFirst({
+    where: { id: apartmentId },
+    select: {
+      owner: {
+        select: {
+          id: true,
+          email: true,
+          createdAt: true,
+          canManageListing: true,
+        },
+      },
+    },
+  });
+  const owner = apartment?.owner;
+  if (!owner) return null;
+  return {
+    memberId: owner.id,
+    kind: isApartmentAccountEmail(owner.email) ? "apartment" : "personal",
+    activatedAt: owner.createdAt.toISOString(),
+    canManageListing: owner.canManageListing,
+  };
+}
+
+/**
+ * Raderar lägenhetens konto: inloggningen i Supabase och Member-raden.
+ * Felanmälningarna finns kvar för styrelsen men kopplas bort från kontot.
+ *
+ * Styrelsens personliga konton raderas aldrig här – de kopplas bara bort från
+ * lägenheten. Ett personligt boendekonto från tiden med registrering tas bort
+ * ur föreningen; dess inloggning kan höra till fler föreningar och städas av
+ * `npm run users:prune`.
+ */
+export async function deleteApartmentAccount(apartmentId: string): Promise<void> {
+  const { db } = await getTenantDb();
+  const apartment = await db.apartment.findFirst({
+    where: { id: apartmentId },
+    select: { owner: { select: { id: true, email: true, role: true } } },
+  });
+  const owner = apartment?.owner;
+  if (!owner) return;
+
+  if (owner.role === "admin") {
+    await db.apartment.updateMany({
+      where: { id: apartmentId },
+      data: { ownerMemberId: null },
+    });
+    return;
+  }
+
+  if (isApartmentAccountEmail(owner.email)) {
+    const authId = await findAuthUserId(owner.email);
+    if (authId) {
+      const { error } = await createSupabaseAdminClient().auth.admin.deleteUser(authId);
+      if (error) throw new Error(`Inloggningen kunde inte raderas: ${error.message}`);
+    }
+  }
+  await db.member.deleteMany({ where: { id: owner.id } });
+}
+
+/** Tar bort lägenhetens kod. Den slutar gälla direkt. */
+export async function clearAccessCode(apartmentId: string): Promise<void> {
+  const { db } = await getTenantDb();
+  await db.apartment.updateMany({
+    where: { id: apartmentId },
+    data: { accessCodeHash: null, accessCodeCreatedAt: null },
+  });
+}
+
+/**
+ * Ägarbyte: lägenhetens konto raderas så att säljaren loggas ut, annonsen och
+ * bilderna rensas och koden slutar gälla. Fakta och planritning ligger kvar
+ * till nästa ägare, som får en ny kod i ett nytt brev.
+ */
+export async function endApartmentOwnership(apartmentId: string): Promise<void> {
+  await deleteApartmentAccount(apartmentId);
+  await releaseApartment(apartmentId);
+  await clearAccessCode(apartmentId);
+}
+
+/**
+ * Håller lägenhetskontots namn i takt med lägenhetsnumret, när numret ändras i
+ * registret. Personliga konton rörs inte.
+ */
+export async function syncApartmentAccountName(apartmentId: string): Promise<void> {
+  const { db } = await getTenantDb();
+  const apartment = await db.apartment.findFirst({
+    where: { id: apartmentId },
+    select: { number: true, owner: { select: { id: true, email: true } } },
+  });
+  const owner = apartment?.owner;
+  if (!apartment || !owner || !isApartmentAccountEmail(owner.email)) return;
+  await db.member.updateMany({
+    where: { id: owner.id },
+    data: { fullName: `Lägenhet ${apartment.number}`, apartment: apartment.number },
+  });
 }

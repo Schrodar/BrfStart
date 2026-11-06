@@ -8,7 +8,6 @@ import {
   Field,
   FormError,
   Input,
-  Select,
   SubmitButton,
 } from "@/components/ui";
 import { createInvitationAction, type InviteState } from "./actions";
@@ -19,25 +18,20 @@ const INITIAL: InviteState = {
   link: "",
   email: "",
   fullName: "",
-  role: "member",
   expiresAt: "",
 };
 
-/** Färdigt mejl som styrelsen skickar från sin egen e-post. */
+/** Färdigt mejl att skicka från den egna e-posten. */
 function mailtoHref(state: InviteState, associationName: string): string {
-  const roleText = state.role === "admin" ? "styrelseadmin" : "boende";
   const subject = `Inbjudan till ${associationName}`;
   const body = [
     `Hej ${state.fullName}!`,
     "",
-    `Du är inbjuden som ${roleText} på ${associationName}s webbplats. Öppna länken och välj ett lösenord för att aktivera ditt konto:`,
+    `Du är inbjuden som styrelseadmin på ${associationName}s webbplats. Öppna länken och välj ett lösenord för att aktivera ditt konto:`,
     "",
     state.link,
     "",
     `Länken gäller till och med ${formatDate(state.expiresAt)} och kan bara användas en gång.`,
-    "",
-    "Hälsningar",
-    "Styrelsen",
   ].join("\r\n");
   return `mailto:${encodeURIComponent(state.email)}?subject=${encodeURIComponent(
     subject,
@@ -49,7 +43,6 @@ export function InviteForm({ associationName }: { associationName: string }) {
     createInvitationAction,
     INITIAL,
   );
-  const [role, setRole] = useState<"admin" | "member">("member");
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -69,37 +62,12 @@ export function InviteForm({ associationName }: { associationName: string }) {
           <Field label="Namn" htmlFor="invite-name" required>
             <Input id="invite-name" name="fullName" required minLength={2} autoComplete="off" />
           </Field>
-          <Field label="Roll" htmlFor="invite-role">
-            <Select
-              id="invite-role"
-              name="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "member")}
-            >
-              <option value="member">Boende</option>
-              <option value="admin">Styrelse (admin)</option>
-            </Select>
-          </Field>
-          {role === "member" ? (
-            <Field label="Lägenhetsnummer" htmlFor="invite-apartment">
-              <Input id="invite-apartment" name="apartment" />
-            </Field>
-          ) : null}
         </div>
 
-        {role === "member" ? (
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="canManageListing" className="h-4 w-4 rounded border-border" />
-            Får lägga upp sin lägenhet till salu (annonsrätt)
-          </label>
-        ) : null}
-
         <p className="text-xs text-muted">
-          {role === "admin"
-            ? "En admin kommer åt hela adminpanelen, precis som du."
-            : "Boende godkänns direkt och kommer åt Mina sidor."}{" "}
-          Kontot skapas först när personen öppnar länken och väljer sitt lösenord.
-          Länken gäller i 7 dagar och kan bara användas en gång.
+          Ledamoten blir admin och kommer åt hela adminpanelen. Kontot skapas
+          först när personen öppnar länken och väljer sitt lösenord. Länken
+          gäller i 7 dagar och kan bara användas en gång.
         </p>
 
         <SubmitButton pendingText="Skapar…">Skapa inbjudan</SubmitButton>
@@ -122,7 +90,7 @@ export function InviteForm({ associationName }: { associationName: string }) {
             </a>
           </div>
           <p className="text-xs text-muted">
-            "Öppna i mejl" startar din vanliga e-post med ett färdigt mejl. Länken visas bara
+            ”Öppna i mejl” startar din vanliga e-post med ett färdigt mejl. Länken visas bara
             nu – skapa en ny inbjudan om den kommer bort.
           </p>
         </div>

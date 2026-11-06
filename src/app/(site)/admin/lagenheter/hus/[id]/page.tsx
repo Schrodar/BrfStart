@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireSupport } from "@/lib/auth";
 import {
   getApartmentsByBuilding,
+  getAssociationProfile,
   getBuildingById,
   getBuildings,
   getUnassignedApartments,
@@ -10,6 +12,7 @@ import type { Apartment } from "@/lib/types";
 import { floorLabel, formatApartmentNumber } from "@/lib/numbering";
 import { Badge, Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
 import { BulkAddForm } from "../../bulk-add-form";
+import { CodeSection } from "../../code-section";
 import { MoveApartmentForm } from "../../move-apartment-form";
 
 interface Props {
@@ -30,12 +33,13 @@ function ApartmentTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-card border border-border bg-surface">
-      <table className="w-full min-w-[640px] text-sm">
+      <table className="w-full min-w-[720px] text-sm">
         <thead className="border-b border-border text-left text-muted">
           <tr>
             <th className="px-4 py-3 font-medium">Lägenhet</th>
             <th className="px-4 py-3 font-medium">Fakta</th>
             <th className="px-4 py-3 font-medium">Planritning</th>
+            <th className="px-4 py-3 font-medium">Konto</th>
             <th className="px-4 py-3 font-medium">Flytta till</th>
             <th className="px-4 py-3 text-right font-medium">Åtgärd</th>
           </tr>
@@ -61,6 +65,13 @@ function ApartmentTable({
               <td className="px-4 py-3 text-muted">
                 {a.floorPlanPath ? "Uppladdad" : "–"}
               </td>
+              <td className="px-4 py-3 text-muted">
+                {a.ownerMemberId
+                  ? "Aktiverat"
+                  : a.accessCodeCreatedAt
+                    ? "Kod skapad"
+                    : "Ingen kod"}
+              </td>
               <td className="px-4 py-3">
                 <MoveApartmentForm
                   apartmentId={a.id}
@@ -85,12 +96,14 @@ function ApartmentTable({
 }
 
 export default async function BuildingPage({ params }: Props) {
+  await requireSupport();
   const { id } = await params;
   const unassignedView = id === UNASSIGNED;
 
-  const [building, buildings] = await Promise.all([
+  const [building, buildings, profile] = await Promise.all([
     unassignedView ? Promise.resolve(null) : getBuildingById(id),
     getBuildings(),
+    getAssociationProfile(),
   ]);
   if (!unassignedView && !building) notFound();
 
@@ -132,6 +145,15 @@ export default async function BuildingPage({ params }: Props) {
           currentBuildingId={unassignedView ? null : id}
         />
       )}
+
+      {apartments.length > 0 ? (
+        <CodeSection
+          apartments={apartments}
+          scope={id}
+          sender={{ name: profile.name, contactEmail: profile.contactEmail }}
+          title={unassignedView ? "Koder och brev" : "Koder och brev för huset"}
+        />
+      ) : null}
 
       {!unassignedView ? (
         <Card>

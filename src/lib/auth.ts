@@ -111,6 +111,23 @@ export async function requireAdmin(): Promise<CurrentUser> {
 }
 
 /**
+ * Kräver plattformsägaren (JnM) i ett supportläge. Hus, lägenheter, koderna
+ * och styrelsens konton sköts av JnM – styrelsen når inte de sidorna, och
+ * varje skrivning loggas i supportloggen. Utan supportläge skickas man till
+ * adminpanelens översikt, som i sin tur kräver admin.
+ */
+export async function requireSupport(): Promise<CurrentUser> {
+  const support = await getSupportSession();
+  if (!support) redirect("/admin");
+  markSupportRequest({
+    sessionId: support.id,
+    platformAdminId: support.platformAdminId,
+    adminEmail: support.adminEmail,
+  });
+  return supportUser(support);
+}
+
+/**
  * Kräver godkänd medlem – även admins måste vara godkända. Väntande konton
  * skickas till en informationssida.
  */

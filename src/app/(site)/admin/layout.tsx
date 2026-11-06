@@ -4,47 +4,58 @@ import { getSupportSession, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import { endSupportAction } from "./support/actions";
 
-const adminNav: SubNavItem[] = [
-  { href: "/admin", label: "Översikt" },
-  { href: "/admin/nyheter", label: "Nyheter" },
-  { href: "/admin/dokument", label: "Dokument" },
-  {
-    href: "/admin/styrelse",
-    label: "Styrelse",
-    children: [
-      { href: "/admin/styrelse", label: "Styrelse och grupper" },
-      { href: "/admin/medlemmar", label: "Användare & behörigheter" },
-    ],
-  },
-  {
-    href: "/admin/foreningsinfo",
-    label: "Föreningsinfo",
-    children: [
-      { href: "/admin/foreningsinfo", label: "Fakta" },
-      { href: "/admin/foreningsinfo/kontakt", label: "Namn och kontakt" },
-      { href: "/admin/foreningsinfo/ekonomi", label: "Ekonomi" },
-      { href: "/admin/innehall", label: "Innehåll" },
-    ],
-  },
-  {
-    href: "/admin/felanmalningar",
-    label: "Felanmälningar",
-    children: [
-      { href: "/admin/felanmalningar", label: "Ärenden" },
-      { href: "/admin/felanmalningar/mote", label: "Mötesläge" },
-    ],
-  },
-  {
-    href: "/admin/lagenheter",
-    label: "Fastigheten",
-    children: [
-      { href: "/admin/lagenheter", label: "Hus och lägenheter" },
-      { href: "/admin/till-salu", label: "Till salu" },
-      { href: "/admin/tavlor", label: "Trapphustavlor" },
-    ],
-  },
-  { href: "/admin/supportlogg", label: "Supportlogg" },
-];
+/**
+ * Menyn. Hus, lägenheter, koder och styrelsens konton sköts av plattformsägaren
+ * (JnM) i ett supportläge – styrelsen ser varken flikarna eller sidorna, som
+ * själva kräver requireSupport().
+ */
+function adminNav(support: boolean): SubNavItem[] {
+  return [
+    { href: "/admin", label: "Översikt" },
+    { href: "/admin/nyheter", label: "Nyheter" },
+    { href: "/admin/dokument", label: "Dokument" },
+    support
+      ? {
+          href: "/admin/styrelse",
+          label: "Styrelse",
+          children: [
+            { href: "/admin/styrelse", label: "Styrelse och grupper" },
+            { href: "/admin/medlemmar", label: "Admins" },
+          ],
+        }
+      : { href: "/admin/styrelse", label: "Styrelse" },
+    {
+      href: "/admin/foreningsinfo",
+      label: "Föreningsinfo",
+      children: [
+        { href: "/admin/foreningsinfo", label: "Fakta" },
+        { href: "/admin/foreningsinfo/kontakt", label: "Namn och kontakt" },
+        { href: "/admin/foreningsinfo/ekonomi", label: "Ekonomi" },
+        { href: "/admin/innehall", label: "Innehåll" },
+      ],
+    },
+    {
+      href: "/admin/felanmalningar",
+      label: "Felanmälningar",
+      children: [
+        { href: "/admin/felanmalningar", label: "Ärenden" },
+        { href: "/admin/felanmalningar/mote", label: "Mötesläge" },
+      ],
+    },
+    {
+      href: support ? "/admin/lagenheter" : "/admin/till-salu",
+      label: "Fastigheten",
+      children: [
+        ...(support
+          ? [{ href: "/admin/lagenheter", label: "Hus och lägenheter" }]
+          : []),
+        { href: "/admin/till-salu", label: "Till salu" },
+        { href: "/admin/tavlor", label: "Trapphustavlor" },
+      ],
+    },
+    { href: "/admin/supportlogg", label: "Supportlogg" },
+  ];
+}
 
 export default async function AdminLayout({
   children,
@@ -87,7 +98,7 @@ export default async function AdminLayout({
             {user.fullName}
           </h1>
           <div className="mt-4">
-            <SubNav items={adminNav} label="Adminmeny" />
+            <SubNav items={adminNav(Boolean(support))} label="Adminmeny" />
           </div>
         </Container>
       </div>

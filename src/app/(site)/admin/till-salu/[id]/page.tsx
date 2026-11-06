@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getApartmentById } from "@/lib/data";
+import { getSupportSession } from "@/lib/auth";
+import { getApartmentAccount, getApartmentById } from "@/lib/data";
 import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import { ListingForm } from "@/components/apartment/listing-form";
@@ -10,6 +11,7 @@ import {
   endListingAction,
   publishAction,
   removePhotoAction,
+  setListingPermissionAction,
   unpublishAction,
   updateListingAction,
   uploadPhotoAction,
@@ -21,7 +23,11 @@ interface Props {
 
 export default async function AdminListingEditPage({ params }: Props) {
   const { id } = await params;
-  const apartment = await getApartmentById(id);
+  const [apartment, account, support] = await Promise.all([
+    getApartmentById(id),
+    getApartmentAccount(id),
+    getSupportSession(),
+  ]);
   if (!apartment || !apartment.forSale) notFound();
 
   const published = apartment.listingStatus === "published";
@@ -36,14 +42,45 @@ export default async function AdminListingEditPage({ params }: Props) {
             .join(" · ") || undefined
         }
         actions={
-          <Link
-            href={`/admin/lagenheter/${apartment.id}`}
-            className="text-sm font-medium text-brand-700 hover:underline"
-          >
-            Lägenhetsuppgifter →
-          </Link>
+          // Lägenhetsregistret sköts av JnM i supportläget.
+          support ? (
+            <Link
+              href={`/admin/lagenheter/${apartment.id}`}
+              className="text-sm font-medium text-brand-700 hover:underline"
+            >
+              Lägenhetsuppgifter →
+            </Link>
+          ) : undefined
         }
       />
+
+      <Card>
+        <CardBody className="flex flex-wrap items-center justify-between gap-3">
+          <div className="max-w-xl">
+            <h3 className="font-semibold">Lägenhetens konto</h3>
+            <p className="mt-1 text-sm text-muted">
+              {!account
+                ? "Lägenheten har inget konto ännu, så annonsen sköts här."
+                : account.canManageListing
+                  ? "Kontot har annonsrätt och publicerar annonsen själv."
+                  : "Kontot skickar annonsen hit, och ni publicerar den."}
+            </p>
+          </div>
+          {account ? (
+            <form action={setListingPermissionAction}>
+              <input type="hidden" name="apartmentId" value={apartment.id} />
+              <input
+                type="hidden"
+                name="value"
+                value={account.canManageListing ? "0" : "1"}
+              />
+              <button className="text-sm font-medium text-brand-700 hover:underline">
+                {account.canManageListing ? "Ta bort annonsrätten" : "Ge annonsrätt"}
+              </button>
+            </form>
+          ) : null}
+        </CardBody>
+      </Card>
 
       <Card>
         <CardBody className="flex flex-wrap items-center justify-between gap-3">
@@ -121,10 +158,10 @@ export default async function AdminListingEditPage({ params }: Props) {
           <div className="max-w-xl">
             <h3 className="font-semibold">Försäljningen är klar</h3>
             <p className="mt-1 text-sm text-muted">
-              Använd när lägenheten har bytt ägare. Annonsen, annonstexterna och
-              alla bilder raderas, och säljaren kopplas bort från lägenheten.
-              Fakta och planritning ligger kvar till nästa ägare. Går inte att
-              ångra.
+              Använd när lägenheten har bytt ägare. Lägenhetens konto raderas
+              och säljaren loggas ut, annonsen och bilderna raderas och
+              lägenhetens kod slutar gälla. Fakta och planritning ligger kvar.
+              Köparen får en ny kod i ett brev från JnM. Går inte att ångra.
             </p>
           </div>
           <form action={completeSaleAction}>

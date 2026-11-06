@@ -1,116 +1,35 @@
+import { requireSupport } from "@/lib/auth";
 import { getAssociationProfile, getMembers, listInvitations } from "@/lib/data";
 import type { InvitationItem } from "@/lib/data/invitations";
 import type { Member } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
-import {
-  approveMemberAction,
-  deleteMemberAction,
-  rejectMemberAction,
-  revokeInvitationAction,
-  setListingPermissionAction,
-  setRoleAction,
-} from "./actions";
+import { removeAdminAction, revokeInvitationAction } from "./actions";
 import { InviteForm } from "./invite-form";
 
-function MemberRow({ member }: { member: Member }) {
-  return (
-    <tr>
-      <td className="px-4 py-3">
-        <p className="font-medium text-foreground">{member.fullName}</p>
-        <p className="text-xs text-muted">{member.email}</p>
-      </td>
-      <td className="px-4 py-3 text-muted">{member.apartment || "–"}</td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap gap-1">
-          {member.role === "admin" ? (
-            <Badge tone="brand">Styrelse</Badge>
-          ) : (
-            <Badge>Boende</Badge>
-          )}
-          {member.canManageListing ? (
-            <Badge tone="success">Annonsrätt</Badge>
-          ) : null}
-        </div>
-      </td>
-      <td className="px-4 py-3 text-muted">{formatDate(member.createdAt)}</td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {member.status === "pending" ? (
-            <>
-              <form action={approveMemberAction}>
-                <input type="hidden" name="id" value={member.id} />
-                <button className="font-medium text-brand-700 hover:underline">
-                  Godkänn
-                </button>
-              </form>
-              <form action={rejectMemberAction}>
-                <input type="hidden" name="id" value={member.id} />
-                <button className="font-medium text-red-600 hover:underline">
-                  Neka
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <form action={setRoleAction} className="flex items-center gap-1">
-                <input type="hidden" name="id" value={member.id} />
-                <select
-                  name="role"
-                  defaultValue={member.role}
-                  className="rounded-md border border-border bg-white px-2 py-1 text-xs"
-                >
-                  <option value="member">Boende</option>
-                  <option value="admin">Styrelse</option>
-                </select>
-                <button className="text-xs font-medium text-brand-700 hover:underline">
-                  Spara
-                </button>
-              </form>
-              <form action={setListingPermissionAction}>
-                <input type="hidden" name="id" value={member.id} />
-                <input
-                  type="hidden"
-                  name="value"
-                  value={member.canManageListing ? "0" : "1"}
-                />
-                <button className="font-medium text-brand-700 hover:underline">
-                  {member.canManageListing ? "Ta bort annonsrätt" : "Ge annonsrätt"}
-                </button>
-              </form>
-              <form action={deleteMemberAction}>
-                <input type="hidden" name="id" value={member.id} />
-                <button className="font-medium text-red-600 hover:underline">
-                  Ta bort
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-export default async function AdminMembersPage() {
+/**
+ * Styrelsens personliga konton – bara i supportläget. De boende har
+ * lägenhetens konto och syns under Hus och lägenheter.
+ */
+export default async function AdminAccountsPage() {
+  await requireSupport();
   const [members, invitations, profile] = await Promise.all([
     getMembers(),
     listInvitations(),
     getAssociationProfile(),
   ]);
-  const pending = members.filter((m) => m.status === "pending");
-  const others = members.filter((m) => m.status !== "pending");
+  const admins = members.filter((m) => m.role === "admin");
 
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Användare & behörigheter"
-        description="Bjud in nya användare, godkänn registreringar och styr vem som har tillgång till de inloggade delarna av hemsidan."
+        title="Admins"
+        description="Ledamöternas personliga konton till adminpanelen. Bara du ser sidan, i supportläget. De boende har lägenhetens konto, som sköts under Hus och lägenheter."
       />
 
       <Card>
         <CardBody>
-          <h2 className="mb-4 font-semibold">Bjud in</h2>
+          <h2 className="mb-4 font-semibold">Bjud in en ledamot</h2>
           <InviteForm associationName={profile.name} />
         </CardBody>
       </Card>
@@ -128,34 +47,13 @@ export default async function AdminMembersPage() {
 
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-          Väntar på godkännande ({pending.length})
+          Admins ({admins.length})
         </h2>
         <div className="mt-3">
-          {pending.length === 0 ? (
-            <Card>
-              <CardBody className="py-6 text-sm text-muted">
-                Inga nya registreringar just nu.
-              </CardBody>
-            </Card>
+          {admins.length === 0 ? (
+            <EmptyState title="Inga admins ännu" />
           ) : (
-            <MemberTable members={pending} />
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-          Alla konton
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          Tar du bort ett konto efter en försäljning raderas lägenhetens annons
-          och bilder. Fakta och planritning ligger kvar till nästa ägare.
-        </p>
-        <div className="mt-3">
-          {others.length === 0 ? (
-            <EmptyState title="Inga aktiva konton" />
-          ) : (
-            <MemberTable members={others} />
+            <AdminTable admins={admins} />
           )}
         </div>
       </div>
@@ -163,22 +61,42 @@ export default async function AdminMembersPage() {
   );
 }
 
-function MemberTable({ members }: { members: Member[] }) {
+function AdminTable({ admins }: { admins: Member[] }) {
   return (
     <div className="overflow-x-auto rounded-card border border-border bg-surface">
-      <table className="w-full min-w-[640px] text-sm">
+      <table className="w-full min-w-[560px] text-sm">
         <thead className="border-b border-border text-left text-muted">
           <tr>
             <th className="px-4 py-3 font-medium">Namn</th>
-            <th className="px-4 py-3 font-medium">Lgh</th>
-            <th className="px-4 py-3 font-medium">Roll</th>
-            <th className="px-4 py-3 font-medium">Registrerad</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Sedan</th>
             <th className="px-4 py-3 text-right font-medium">Åtgärd</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {members.map((member) => (
-            <MemberRow key={member.id} member={member} />
+          {admins.map((admin) => (
+            <tr key={admin.id}>
+              <td className="px-4 py-3">
+                <p className="font-medium text-foreground">{admin.fullName}</p>
+                <p className="text-xs text-muted">{admin.email}</p>
+              </td>
+              <td className="px-4 py-3">
+                {admin.status === "approved" ? (
+                  <Badge tone="success">Aktiv</Badge>
+                ) : (
+                  <Badge tone="warning">Inte godkänd</Badge>
+                )}
+              </td>
+              <td className="px-4 py-3 text-muted">{formatDate(admin.createdAt)}</td>
+              <td className="px-4 py-3 text-right">
+                <form action={removeAdminAction}>
+                  <input type="hidden" name="id" value={admin.id} />
+                  <button className="text-sm font-medium text-red-600 hover:underline">
+                    Ta bort
+                  </button>
+                </form>
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>
@@ -214,8 +132,7 @@ function InvitationTable({ invitations }: { invitations: InvitationItem[] }) {
                 <p className="text-xs text-muted">{inv.email}</p>
               </td>
               <td className="px-4 py-3 text-muted">
-                {inv.role === "admin" ? "Styrelse (admin)" : "Boende"}
-                {inv.canManageListing ? ", annonsrätt" : ""}
+                {inv.role === "admin" ? "Admin" : "Boende"}
               </td>
               <td className="px-4 py-3 text-muted">
                 {inv.invitedBy || "–"}

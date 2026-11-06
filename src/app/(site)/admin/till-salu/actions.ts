@@ -5,10 +5,12 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import {
   addPhoto,
+  endApartmentOwnership,
   endListing,
+  getApartmentAccount,
   publishListing,
-  releaseApartment,
   removePhoto,
+  setMemberCanManageListing,
   startListing,
   unpublishListing,
   updateListing,
@@ -118,14 +120,27 @@ export async function removePhotoAction(fd: FormData): Promise<void> {
 }
 
 /**
- * Försäljningen är klar: annonsen, annonstexterna och bilderna raderas och
- * säljaren kopplas bort från lägenheten. Fakta och planritning ligger kvar
- * till nästa ägare.
+ * Försäljningen är klar: lägenhetens konto raderas så att säljaren loggas ut,
+ * annonsen och bilderna raderas och lägenhetens kod slutar gälla. Fakta och
+ * planritning ligger kvar. Köparen får en ny kod i ett brev från JnM.
  */
 export async function completeSaleAction(fd: FormData): Promise<void> {
   await requireAdmin();
   const id = aptId(fd);
-  await releaseApartment(id);
+  await endApartmentOwnership(id);
   revalidate(id);
   redirect("/admin/till-salu");
+}
+
+/**
+ * Annonsrätt: får lägenhetens konto publicera annonsen själv, eller skickas den
+ * till styrelsen? Sätts på lägenheten – kontot slås upp härifrån.
+ */
+export async function setListingPermissionAction(fd: FormData): Promise<void> {
+  await requireAdmin();
+  const id = aptId(fd);
+  const account = await getApartmentAccount(id);
+  if (!account) return;
+  await setMemberCanManageListing(account.memberId, fd.get("value") === "1");
+  revalidate(id);
 }

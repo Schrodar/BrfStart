@@ -1,72 +1,38 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireSupport } from "@/lib/auth";
 import {
   createInvitation,
   deleteMember,
-  releaseApartmentOf,
+  getMemberById,
   revokeInvitation,
-  setMemberCanManageListing,
-  setMemberRole,
-  setMemberStatus,
 } from "@/lib/data";
-import { notifyMemberApproved } from "@/lib/email";
+import { siteOrigin } from "@/lib/site-origin";
+
+/*
+ * Styrelsens personliga konton. De boende har lägenhetens konto, som sköts
+ * under Hus och lägenheter. Bara plattformsägaren (JnM) i ett supportläge
+ * bjuder in och tar bort admins.
+ */
 
 function revalidate() {
   revalidatePath("/admin/medlemmar");
   revalidatePath("/admin");
 }
 
-export async function approveMemberAction(formData: FormData): Promise<void> {
-  await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  const member = await setMemberStatus(id, "approved");
-  if (member) await notifyMemberApproved(member);
-  revalidate();
-}
-
-export async function rejectMemberAction(formData: FormData): Promise<void> {
-  await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  await setMemberStatus(id, "rejected");
-  revalidate();
-}
-
 /**
- * Tar bort ett konto – oftast säljaren efter en försäljning. Lägenheten
- * frigörs först: annonsen och bilderna raderas, fakta och planritning ligger
- * kvar till nästa ägare.
+ * Tar bort en admin ur föreningen. Bara Member-raden – inloggningen kan höra
+ * till fler föreningar och städas av `npm run users:prune`. En lägenhet som
+ * kontot var kopplat till släpps utan att något annat rörs.
  */
-export async function deleteMemberAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+export async function removeAdminAction(formData: FormData): Promise<void> {
+  await requireSupport();
   const id = String(formData.get("id") ?? "");
-  await releaseApartmentOf(id);
+  const member = await getMemberById(id);
+  if (member?.role !== "admin") return;
   await deleteMember(id);
-  revalidate();
-  revalidatePath("/admin/till-salu");
-  revalidatePath("/admin/lagenheter");
-  revalidatePath("/till-salu");
-  revalidatePath("/till-salu/[id]", "page");
-  revalidatePath("/");
-}
-
-export async function setRoleAction(formData: FormData): Promise<void> {
-  await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  const role = formData.get("role") === "admin" ? "admin" : "member";
-  await setMemberRole(id, role);
-  revalidate();
-}
-
-export async function setListingPermissionAction(
-  formData: FormData,
-): Promise<void> {
-  await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  await setMemberCanManageListing(id, formData.get("value") === "1");
   revalidate();
 }
 
@@ -77,53 +43,28 @@ export interface InviteState {
   link: string;
   email: string;
   fullName: string;
-  role: "admin" | "member";
   expiresAt: string;
 }
 
 const inviteSchema = z.object({
   email: z.email("Ogiltig e-postadress."),
   fullName: z.string().trim().min(2, "Ange namnet.").max(200),
-  apartment: z.string().trim().max(50),
-  role: z.enum(["admin", "member"]),
-  canManageListing: z.boolean(),
 });
 
 /**
- * Sajtens adress för länken. Byggs av förfrågan, eftersom samma kod körs på
- * flera domäner (en deploy per förening).
- */
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto =
-    h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
-
-/**
- * Styrelsen bjuder in en boende eller en ny admin. Länken visas en gång och
- * skickas av styrelsen själv – den här sajten skickar ingen e-post.
+ * Bjuder in en ledamot som admin. Länken visas en gång och skickas av den som
+ * bjuder in – den här sajten skickar ingen e-post.
  */
 export async function createInvitationAction(
   _prev: InviteState,
   formData: FormData,
 ): Promise<InviteState> {
-  const user = await requireAdmin();
-  const empty = {
-    link: "",
-    email: "",
-    fullName: "",
-    role: "member" as const,
-    expiresAt: "",
-  };
+  const user = await requireSupport();
+  const empty = { link: "", email: "", fullName: "", expiresAt: "" };
 
   const parsed = inviteSchema.safeParse({
     email: String(formData.get("email") ?? "").trim().toLowerCase(),
     fullName: String(formData.get("fullName") ?? ""),
-    apartment: String(formData.get("apartment") ?? ""),
-    role: formData.get("role"),
-    canManageListing: formData.get("canManageListing") === "on",
   });
   if (!parsed.success) {
     return {
@@ -134,7 +75,13 @@ export async function createInvitationAction(
   }
 
   const input = parsed.data;
-  const result = await createInvitation({ ...input, invitedBy: user.fullName });
+  const result = await createInvitation({
+    ...input,
+    apartment: "",
+    role: "admin",
+    canManageListing: false,
+    invitedBy: user.fullName,
+  });
   if (!result.ok) return { ok: false, message: result.error, ...empty };
 
   revalidate();
@@ -144,13 +91,12 @@ export async function createInvitationAction(
     link: `${await siteOrigin()}/aktivera?token=${result.token}`,
     email: input.email,
     fullName: input.fullName,
-    role: input.role,
     expiresAt: result.expiresAt.toISOString(),
   };
 }
 
 export async function revokeInvitationAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireSupport();
   await revokeInvitation(String(formData.get("id") ?? ""));
   revalidate();
 }

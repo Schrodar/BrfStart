@@ -4,16 +4,22 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { FloorSpec } from "@/lib/numbering";
-import { requireAdmin } from "@/lib/auth";
+import { requireSupport } from "@/lib/auth";
 import {
+  createAccessCodes,
   createApartmentsInBulk,
   createBuilding,
   deleteApartment,
+  deleteApartmentAccount,
   deleteBuilding,
-  releaseApartment,
+  endApartmentOwnership,
+  getAllApartments,
+  getApartmentsByBuilding,
+  getUnassignedApartments,
   reorderBuildings,
   setApartmentBuilding,
   setFloorPlan,
+  syncApartmentAccountName,
   updateApartmentFacts,
   updateBuilding,
 } from "@/lib/data";
@@ -26,12 +32,23 @@ import {
   validateFile,
 } from "@/lib/storage";
 import type { FormState } from "@/lib/form";
+import { siteOrigin } from "@/lib/site-origin";
+import type { LetterState } from "./letter-state";
 
-// Annonsåtgärderna bor under /admin/till-salu och importeras direkt därifrån –
-// en "use server"-fil får inte återexportera actions från en annan.
+/*
+ * Fastigheten – hus, lägenheter, koder och konton – sköts av plattformsägaren
+ * (JnM) i ett supportläge. Därför kräver varje action requireSupport(), och
+ * varje skrivning hamnar i supportloggen.
+ *
+ * Annonsåtgärderna bor under /admin/till-salu och importeras direkt därifrån –
+ * en "use server"-fil får inte återexportera actions från en annan.
+ */
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? "");
 const aptId = (fd: FormData) => String(fd.get("apartmentId") ?? "");
+
+/** Samlingsvyn för lägenheter utan hus har den här adressen i stället för ett hus-id. */
+const UNASSIGNED = "ej-placerade";
 
 function revalidate(id?: string) {
   revalidatePath("/admin/lagenheter");
@@ -45,7 +62,7 @@ export async function updateFactsAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSupport();
   const id = aptId(fd);
   const result = await updateApartmentFacts(id, {
     number: str(fd, "number"),
@@ -56,6 +73,8 @@ export async function updateFactsAction(
     description: str(fd, "description"),
   });
   if (!result.ok) return { error: result.error };
+  // Lägenhetsnumret är inloggningen – kontots namn följer med.
+  await syncApartmentAccountName(id);
   revalidate(id);
   return { success: "Lägenhetsfakta sparad." };
 }
@@ -64,7 +83,7 @@ export async function uploadFloorPlanAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSupport();
   const id = aptId(fd);
   const file = fd.get("file") as File | null;
   const err = validateFile(file, FLOORPLAN_TYPES);
@@ -78,7 +97,7 @@ export async function uploadFloorPlanAction(
 }
 
 export async function removeFloorPlanAction(fd: FormData): Promise<void> {
-  await requireAdmin();
+  await requireSupport();
   const id = aptId(fd);
   const old = await setFloorPlan(id, null);
   if (old) await removeFile(BUCKET_FLOORPLANS, old);
@@ -86,8 +105,10 @@ export async function removeFloorPlanAction(fd: FormData): Promise<void> {
 }
 
 export async function deleteApartmentAction(fd: FormData): Promise<void> {
-  await requireAdmin();
+  await requireSupport();
   const id = aptId(fd);
+  // Kontot hör till lägenheten och försvinner med den.
+  await deleteApartmentAccount(id);
   const { floorPlanPath, photoPaths } = await deleteApartment(id);
   if (floorPlanPath) await removeFile(BUCKET_FLOORPLANS, floorPlanPath);
   for (const p of photoPaths) await removeFile(BUCKET_PHOTOS, p);
@@ -130,7 +151,7 @@ export async function createBuildingAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSupport();
   const parsed = buildingSchema.safeParse(buildingFields(fd));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
@@ -144,7 +165,7 @@ export async function updateBuildingAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSupport();
   const id = String(fd.get("id") ?? "");
   const parsed = buildingSchema.safeParse(buildingFields(fd));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
@@ -159,8 +180,13 @@ export async function deleteBuildingAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
-  const result = await deleteBuilding(String(fd.get("id") ?? ""));
+  await requireSupport();
+  const buildingId = String(fd.get("id") ?? "");
+  // Lägenheternas konton försvinner med huset.
+  for (const apartment of await getApartmentsByBuilding(buildingId)) {
+    await deleteApartmentAccount(apartment.id);
+  }
+  const result = await deleteBuilding(buildingId);
   if (!result.ok) return { error: result.error };
 
   // Databasen kaskaderar fotoraderna, men filerna i Storage måste bort separat.
@@ -188,7 +214,7 @@ export async function deleteBuildingAction(
 export async function reorderBuildingsAction(
   orderedIds: string[],
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSupport();
   const result = await reorderBuildings(orderedIds);
   if (!result.ok) return { error: result.error };
   revalidateBuildings();
@@ -199,7 +225,7 @@ export async function moveApartmentAction(
   apartmentId: string,
   buildingId: string,
 ): Promise<void> {
-  await requireAdmin();
+  await requireSupport();
   await setApartmentBuilding(apartmentId, buildingId || null);
   revalidateBuildings(buildingId || undefined);
 }
@@ -218,7 +244,7 @@ export async function bulkAddApartmentsAction(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  await requireSupport();
   const parsed = bulkSchema.safeParse({
     buildingId: fd.get("buildingId"),
     floorFrom: fd.get("floorFrom"),
@@ -262,16 +288,76 @@ export async function bulkAddApartmentsAction(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Koder och brev
+// ---------------------------------------------------------------------------
+
+/** Lägenheterna i ett hus, utan hus, eller i hela föreningen ("" = alla). */
+async function apartmentsIn(scope: string) {
+  if (!scope) return getAllApartments();
+  if (scope === UNASSIGNED) return getUnassignedApartments();
+  return getApartmentsByBuilding(scope);
+}
+
 /**
- * Ägarbyte utan annons på sajten: bilder och annonstexter raderas och den
- * boende kopplas bort. Fakta och planritning ligger kvar till nästa ägare,
- * som kopplas när hen registrerar sig och öppnar Min lägenhet.
+ * Skapar koder och returnerar breven. scope = hus-id, "ej-placerade" eller ""
+ * för hela föreningen. Med onlyMissing får bara lägenheter som saknar kod en –
+ * annars ersätts alla koder, och de gamla slutar gälla.
  */
-export async function releaseApartmentAction(fd: FormData): Promise<void> {
-  await requireAdmin();
+export async function createCodesAction(
+  _prev: LetterState,
+  fd: FormData,
+): Promise<LetterState> {
+  await requireSupport();
+  const scope = str(fd, "scope");
+  const onlyMissing = fd.get("onlyMissing") === "1";
+
+  const apartments = await apartmentsIn(scope);
+  const ids = apartments
+    .filter((a) => !onlyMissing || !a.accessCodeCreatedAt)
+    .map((a) => a.id);
+  if (ids.length === 0) {
+    return {
+      error: onlyMissing
+        ? "Alla lägenheter här har redan en kod."
+        : "Det finns inga lägenheter här ännu.",
+    };
+  }
+
+  const letters = await createAccessCodes(ids);
+  revalidateBuildings(scope && scope !== UNASSIGNED ? scope : undefined);
+  return { letters, origin: await siteOrigin() };
+}
+
+/** En tappad kod: lägenheten får en ny, och den gamla slutar gälla. Kontot rörs inte. */
+export async function newCodeAction(
+  _prev: LetterState,
+  fd: FormData,
+): Promise<LetterState> {
+  await requireSupport();
   const id = aptId(fd);
-  await releaseApartment(id);
+  const letters = await createAccessCodes([id]);
+  if (letters.length === 0) return { error: "Lägenheten hittades inte." };
+  revalidate(id);
+  return { letters, origin: await siteOrigin() };
+}
+
+/**
+ * Ägarbyte: kontot raderas (säljaren loggas ut), annonsen och bilderna rensas
+ * och lägenheten får en ny kod – brevet till köparen. Fakta och planritning
+ * ligger kvar.
+ */
+export async function changeOwnerAction(
+  _prev: LetterState,
+  fd: FormData,
+): Promise<LetterState> {
+  await requireSupport();
+  const id = aptId(fd);
+  await endApartmentOwnership(id);
+  const letters = await createAccessCodes([id]);
+  if (letters.length === 0) return { error: "Lägenheten hittades inte." };
   revalidatePath("/admin");
   revalidatePath("/admin/till-salu");
   revalidate(id);
+  return { letters, origin: await siteOrigin() };
 }
