@@ -155,8 +155,7 @@ kraschar mot en databas som saknar den. Därför:
 1. `db push` mot testprojektet, och prova lokalt.
 2. `db push` mot den riktiga databasen. Ändringar som bara lägger till tabeller
    och kolumner påverkar inte sajterna som redan kör.
-3. Först därefter: deploya BrfStart, för över ändringen till brfpep och synka
-   schemat i JohanIt och BrfApp.
+3. Först därefter: deploya BrfStart och synka schemat i JohanIt och BrfApp.
 
 ## Drift (Coolify på egen VPS)
 
@@ -245,11 +244,6 @@ applikationens *Resource Limits*.
    `NEXT_PUBLIC_HERO_VIDEO` i deployens env (läses vid bygget). Bilden tonar
    fram med en långsam zoom, och toningen över bild och film följer
    `--color-brand-900`.
-
-> **Sajtspecifikt – skriv inte över vid synk från BrfStart:** i kopiorna
-> (brfdosa, brfpep) skiljer sig `README.md` (rubriken), `package.json` (namn,
-> inga db-skript), `prisma/schema.prisma` (varningen), `src/config/siteConfig.ts`
-> (heron) och `public/images/hero.webp`. För över allt annat som det är.
 5. **Startinnehåll:** ändra innehållet direkt i adminpanelen, eller redigera
    seed-datan i [`prisma/seed.ts`](prisma/seed.ts) och kör om `npm run db:seed`.
 

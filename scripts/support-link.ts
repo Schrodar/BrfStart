@@ -1,6 +1,6 @@
 // Skapar en supportlänk till EN förenings adminpanel och skriver ut den.
 // Kör: npm run support:link -- <förening-slug> <plattformsadmin-e-post> <sajtens-adress> ["anledning"]
-//   t.ex. npm run support:link -- brf-pep anna@jnm.se https://brfpeppar.se "Lägger upp lägenheter och koder"
+//   t.ex. npm run support:link -- brf-min-forening anna@jnm.se https://min-forening.se "Lägger upp lägenheter och koder"
 //
 // Samma sak som Supportläge i JnM-panelen, för test och för när panelen inte
 // går att använda. Hus, lägenheter, koder och admins nås bara i supportläget.
