@@ -31,7 +31,10 @@ function accountText(account: ApartmentAccount | null): string {
   if (account.kind === "personal") {
     return "Ett personligt konto från tiden med registrering. Det ersätts när lägenhetens kod används.";
   }
-  return `Aktiverat ${formatDate(account.activatedAt)}.`;
+  const activated = `Aktiverat ${formatDate(account.activatedAt)}.`;
+  return account.isAdmin
+    ? `${activated} Kontot har admin-rätt – någon i lägenheten sitter i styrelsen. Admin-rätten ändras under Konton.`
+    : activated;
 }
 
 export default async function AdminApartmentEditPage({ params }: Props) {

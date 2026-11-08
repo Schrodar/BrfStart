@@ -73,15 +73,19 @@ godkännande.
   lösenord**. Samma kod igen ger kontot ett nytt lösenord och loggar ut alla
   enheter – så återställs ett glömt lösenord. Högst tio felaktiga koder per IP
   och kvart.
-- **Tappad kod:** JnM skapar en ny kod på lägenhetens sida (den gamla slutar
-  gälla) och ett nytt brev går till brevlådan – aldrig till en e-postadress.
+- **Tappad kod:** JnM skapar en ny kod på lägenhetens sida eller under Konton
+  (den gamla slutar gälla) och ett nytt brev går till brevlådan – aldrig till
+  en e-postadress.
 - **Ägarbyte:** kontot raderas så att säljaren loggas ut, annonsen rensas och
   koden slutar gälla. JnM gör det på lägenhetens sida och skriver ut köparens
   brev. Styrelsens "Försäljningen är klar" under Till salu gör samma sak, och
   köparens brev kommer sedan från JnM.
-- **Styrelsen** har personliga konton med e-post och loggar in med e-posten.
-  JnM bjuder in ledamöterna från JnM-panelen, under Admins i supportläget,
-  eller med:
+- **Styrelsen** använder sin lägenhets konto. JnM ger kontot admin-rätt under
+  Konton i supportläget: sök fram lägenheten och välj Gör till admin. Hela
+  hushållet delar då admin-rätten, och den följer med när koden används igen.
+  Säljs lägenheten raderas kontot, och admin-rätten med det.
+- **En ledamot som inte bor i föreningen** (t.ex. HSB:s) får ett personligt
+  konto och loggar in med e-posten. JnM bjuder in från JnM-panelen eller med:
 
   ```bash
   npm run admin:invite -- brf-min-forening din@epost.se https://min-forening.se "Ditt Namn"
@@ -95,7 +99,7 @@ sidor. Det enda mejlet går till styrelsen när en felanmälan kommer in.
 
 **Supportläget** öppnas med en engångslänk från JnM-panelen, eller med
 `npm run support:link -- <slug> <plattformsadmin-e-post> <sajtens-adress>`.
-Hus, lägenheter, koder och admins finns bara där. Allt som ändras under
+Hus, lägenheter, koder och konton finns bara där. Allt som ändras under
 supportläget syns för styrelsen i Admin → Supportlogg.
 
 **Övergång från registreringen:** gamla personliga boendekonton kan logga in
@@ -218,7 +222,8 @@ applikationens *Resource Limits*.
 **Supportläge** (JnM)
 
 - Hus och lägenheter, koder och brev, ny kod och ägarbyte
-- Styrelsens admin-konton
+- Konton: styrelsens admins, och sökning på lägenhetsnummer för ny kod och
+  admin-rätt
 
 ## Anpassa för en ny förening
 
