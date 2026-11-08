@@ -188,8 +188,9 @@ export async function redeemAccessCode(
   });
   if (error) return { ok: false, error: FAILED, wrongCode: false };
 
-  // Lägenhetens Member-rad. Finns den redan ligger den kvar, med felanmälningar
-  // och annonsrätt.
+  // Lägenhetens Member-rad. Finns den redan ligger den kvar, med felanmälningar,
+  // annonsrätt och roll – en ledamots lägenhetskonto behåller alltså sin
+  // admin-rätt när koden används igen, till exempel vid ett glömt lösenord.
   let member = await db.member.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
     select: { id: true },
@@ -261,6 +262,8 @@ export interface ApartmentAccount {
   /** När kontot skapades – för lägenhetens konto när koden användes första gången. */
   activatedAt: string;
   canManageListing: boolean;
+  /** Kontot har admin-rätt – någon i lägenheten sitter i styrelsen. */
+  isAdmin: boolean;
 }
 
 /** Kontot som hör till lägenheten, eller null om ingen har aktiverat det. */
@@ -277,6 +280,7 @@ export async function getApartmentAccount(
           email: true,
           createdAt: true,
           canManageListing: true,
+          role: true,
         },
       },
     },
@@ -288,12 +292,18 @@ export async function getApartmentAccount(
     kind: isApartmentAccountEmail(owner.email) ? "apartment" : "personal",
     activatedAt: owner.createdAt.toISOString(),
     canManageListing: owner.canManageListing,
+    isAdmin: owner.role === "admin",
   };
 }
 
 /**
  * Raderar lägenhetens konto: inloggningen i Supabase och Member-raden.
  * Felanmälningarna finns kvar för styrelsen men kopplas bort från kontot.
+ *
+ * Lägenhetens eget konto raderas alltid – även när det har admin-rätt. Annars
+ * behöll säljaren sin inloggning efter ett ägarbyte, och köparen ärvde samma
+ * Member-rad (med admin-rätten och historiken), eftersom lägenhetens interna
+ * adress är densamma för varje ägare.
  *
  * Styrelsens personliga konton raderas aldrig här – de kopplas bara bort från
  * lägenheten. Ett personligt boendekonto från tiden med registrering tas bort
@@ -309,6 +319,16 @@ export async function deleteApartmentAccount(apartmentId: string): Promise<void>
   const owner = apartment?.owner;
   if (!owner) return;
 
+  if (isApartmentAccountEmail(owner.email)) {
+    const authId = await findAuthUserId(owner.email);
+    if (authId) {
+      const { error } = await createSupabaseAdminClient().auth.admin.deleteUser(authId);
+      if (error) throw new Error(`Inloggningen kunde inte raderas: ${error.message}`);
+    }
+    await db.member.deleteMany({ where: { id: owner.id } });
+    return;
+  }
+
   if (owner.role === "admin") {
     await db.apartment.updateMany({
       where: { id: apartmentId },
@@ -317,13 +337,6 @@ export async function deleteApartmentAccount(apartmentId: string): Promise<void>
     return;
   }
 
-  if (isApartmentAccountEmail(owner.email)) {
-    const authId = await findAuthUserId(owner.email);
-    if (authId) {
-      const { error } = await createSupabaseAdminClient().auth.admin.deleteUser(authId);
-      if (error) throw new Error(`Inloggningen kunde inte raderas: ${error.message}`);
-    }
-  }
   await db.member.deleteMany({ where: { id: owner.id } });
 }
 
