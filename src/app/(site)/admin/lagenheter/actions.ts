@@ -53,6 +53,8 @@ const UNASSIGNED = "ej-placerade";
 function revalidate(id?: string) {
   revalidatePath("/admin/lagenheter");
   if (id) revalidatePath(`/admin/lagenheter/${id}`);
+  // Konton visar kod och konto i sökningen, och styrelsens admins.
+  revalidatePath("/admin/medlemmar");
   revalidatePath("/till-salu");
   revalidatePath("/till-salu/[id]", "page");
   revalidatePath("/");

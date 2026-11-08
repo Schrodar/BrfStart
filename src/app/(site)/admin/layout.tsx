@@ -20,7 +20,7 @@ function adminNav(support: boolean): SubNavItem[] {
           label: "Styrelse",
           children: [
             { href: "/admin/styrelse", label: "Styrelse och grupper" },
-            { href: "/admin/medlemmar", label: "Admins" },
+            { href: "/admin/medlemmar", label: "Konton" },
           ],
         }
       : { href: "/admin/styrelse", label: "Styrelse" },

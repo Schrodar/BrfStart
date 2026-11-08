@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { getTenantDb } from "@/lib/tenant";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { knowsPassword } from "@/lib/supabase/password-check";
@@ -6,8 +6,10 @@ import type { Role } from "@/lib/types";
 import { findAuthUserId } from "./auth-users";
 
 /**
- * Inbjudningar till föreningen. De skapas i JnM-panelen eller av styrelsen
- * (Admin → Styrelse → Användare & behörigheter) och löses in på /aktivera.
+ * Inbjudningar till föreningen med e-post – undantaget för en ledamot som inte
+ * bor i föreningen. Ledamöterna använder annars sin lägenhets konto, som får
+ * admin-rätt under Konton. Inbjudningarna skapas i JnM-panelen eller med
+ * `npm run admin:invite` och löses in här, på /aktivera.
  *
  * En inbjudan ger ingen åtkomst i sig. Member-raden skapas först vid inlösen,
  * när personen har valt eller bekräftat sitt lösenord – annars skulle en i
@@ -16,9 +18,6 @@ import { findAuthUserId } from "./auth-users";
  * Uppslagen går via den tenant-scopade klienten, så en token som hör till en
  * annan förening ger ingen träff. Allt avvikande behandlas likadant: null.
  */
-
-/** Hur länge en inbjudan går att lösa in. Samma i JnM-panelen. */
-export const INVITE_DAYS = 7;
 
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -34,116 +33,6 @@ function openWhere(token: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Skapa, lista, återkalla (styrelsen)
-// ---------------------------------------------------------------------------
-
-export interface InvitationInput {
-  email: string;
-  fullName: string;
-  apartment: string;
-  role: Role;
-  canManageListing: boolean;
-  invitedBy: string;
-}
-
-export type CreateInvitationResult =
-  | { ok: true; token: string; expiresAt: Date }
-  | { ok: false; error: string };
-
-/**
- * Styrelsens inbjudan. Får aldrig byta lösenord på ett befintligt konto
- * (resetsPassword: false) – det får bara plattformsägaren.
- */
-export async function createInvitation(
-  input: InvitationInput,
-): Promise<CreateInvitationResult> {
-  const { db, associationId } = await getTenantDb();
-  const email = input.email.trim().toLowerCase();
-
-  const existing = await db.member.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
-    select: { id: true },
-  });
-  if (existing) {
-    return {
-      ok: false,
-      error: `${email} finns redan i föreningen. Ändra roll eller godkänn under Användare & behörigheter i stället.`,
-    };
-  }
-
-  const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + INVITE_DAYS * 86_400_000);
-  await db.memberInvitation.create({
-    data: {
-      associationId,
-      email,
-      fullName: input.fullName.trim(),
-      apartment: input.role === "member" ? input.apartment.trim() : "",
-      role: input.role,
-      canManageListing: input.role === "member" && input.canManageListing,
-      invitedBy: input.invitedBy,
-      resetsPassword: false,
-      tokenHash: digest(token),
-      expiresAt,
-    },
-  });
-  return { ok: true, token, expiresAt };
-}
-
-export type InvitationState = "väntar" | "aktiverad" | "utgången" | "återkallad";
-
-export interface InvitationItem {
-  id: string;
-  email: string;
-  fullName: string;
-  role: Role;
-  canManageListing: boolean;
-  invitedBy: string;
-  createdAt: string;
-  expiresAt: string;
-  usedAt: string | null;
-  emailedAt: string | null;
-  state: InvitationState;
-}
-
-export async function listInvitations(): Promise<InvitationItem[]> {
-  const { db } = await getTenantDb();
-  const rows = await db.memberInvitation.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 30,
-  });
-  const now = new Date();
-  return rows.map((row) => ({
-    id: row.id,
-    email: row.email,
-    fullName: row.fullName,
-    role: row.role,
-    canManageListing: row.canManageListing,
-    invitedBy: row.invitedBy,
-    createdAt: row.createdAt.toISOString(),
-    expiresAt: row.expiresAt.toISOString(),
-    usedAt: row.usedAt?.toISOString() ?? null,
-    emailedAt: row.emailedAt?.toISOString() ?? null,
-    state: row.usedAt
-      ? "aktiverad"
-      : row.revokedAt
-        ? "återkallad"
-        : row.expiresAt <= now
-          ? "utgången"
-          : "väntar",
-  }));
-}
-
-/** Återkallar en inbjudan som inte har lösts in. */
-export async function revokeInvitation(id: string): Promise<void> {
-  const { db } = await getTenantDb();
-  await db.memberInvitation.updateMany({
-    where: { id, usedAt: null, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Inlösen (/aktivera)
 // ---------------------------------------------------------------------------
 
@@ -151,7 +40,8 @@ export async function revokeInvitation(id: string): Promise<void> {
  * Hur aktiveringen går till:
  *   new    – inget konto finns: personen väljer lösenord
  *   reset  – konto finns, plattformsägarens inbjudan: personen väljer nytt lösenord
- *   verify – konto finns, styrelsens inbjudan: personen skriver sitt befintliga
+ *   verify – konto finns, styrelsens inbjudan: personen skriver sitt befintliga.
+ *            Styrelsen bjuder inte längre in, men äldre länkar kan finnas kvar.
  */
 export type ActivationMode = "new" | "reset" | "verify";
 

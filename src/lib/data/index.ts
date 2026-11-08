@@ -8,6 +8,7 @@
  */
 
 export * from "./access-codes";
+export * from "./accounts";
 export * from "./apartments";
 export * from "./association";
 export * from "./auth-users";
