@@ -80,10 +80,12 @@ godkännande.
   koden slutar gälla. JnM gör det på lägenhetens sida och skriver ut köparens
   brev. Styrelsens "Försäljningen är klar" under Till salu gör samma sak, och
   köparens brev kommer sedan från JnM.
-- **Styrelsen** använder sin lägenhets konto. JnM ger kontot admin-rätt under
-  Konton i supportläget: sök fram lägenheten och välj Gör till admin. Hela
-  hushållet delar då admin-rätten, och den följer med när koden används igen.
-  Säljs lägenheten raderas kontot, och admin-rätten med det.
+- **Styrelsen** använder sin lägenhets konto. En admin i styrelsen, eller JnM
+  i supportläget, ger kontot admin-rätt under Styrelse → Konton: sök fram
+  lägenheten och välj Gör till admin. Hela hushållet delar då admin-rätten,
+  och den följer med när koden används igen. Säljs lägenheten raderas kontot,
+  och admin-rätten med det. Ingen kan ta bort sin egen admin-rätt – det gör en
+  annan admin eller JnM.
 - **En ledamot som inte bor i föreningen** (t.ex. HSB:s) får ett personligt
   konto och loggar in med e-posten. JnM bjuder in från JnM-panelen eller med:
 
@@ -99,7 +101,7 @@ sidor. Det enda mejlet går till styrelsen när en felanmälan kommer in.
 
 **Supportläget** öppnas med en engångslänk från JnM-panelen, eller med
 `npm run support:link -- <slug> <plattformsadmin-e-post> <sajtens-adress>`.
-Hus, lägenheter, koder och konton finns bara där. Allt som ändras under
+Hus, lägenheter och koder finns bara där. Allt som ändras under
 supportläget syns för styrelsen i Admin → Supportlogg.
 
 **Övergång från registreringen:** gamla personliga boendekonton kan logga in
@@ -218,12 +220,12 @@ applikationens *Resource Limits*.
 - Nyheter, dokument, styrelse/valberedning, föreningsfakta, sidtexter
 - Felanmälningar (status, svar till anmälaren, mötesläge)
 - Till salu (annonser och annonsrätt) och trapphustavlor
+- Konton: admin-rätt för ledamöternas lägenhetskonton
 
 **Supportläge** (JnM)
 
 - Hus och lägenheter, koder och brev, ny kod och ägarbyte
-- Konton: styrelsens admins, och sökning på lägenhetsnummer för ny kod och
-  admin-rätt
+- Koder och brev även från Konton, med sökning på lägenhetsnummer
 
 ## Anpassa för en ny förening
 

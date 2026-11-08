@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSupport } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { grantApartmentAdmin, revokeAdmin } from "@/lib/data";
 
 /*
- * Konton – bara plattformsägaren (JnM) i ett supportläge, så varje skrivning
- * hamnar i supportloggen. En ledamot använder sin lägenhets konto, som får
- * admin-rätt här. Koderna skapas med newCodeAction under Hus och lägenheter.
+ * Konton – styrelsens admins och JnM i ett supportläge. En ledamot använder
+ * sin lägenhets konto, som får admin-rätt här. I supportläget hamnar
+ * skrivningarna i supportloggen. Koderna skapas bara av JnM, med newCodeAction
+ * under Hus och lägenheter.
  */
 
 function revalidate() {
@@ -18,7 +19,7 @@ function revalidate() {
 
 /** Lägenhetens konto får admin-rätt – någon i lägenheten sitter i styrelsen. */
 export async function grantAdminAction(formData: FormData): Promise<void> {
-  await requireSupport();
+  await requireAdmin();
   await grantApartmentAdmin(String(formData.get("apartmentId") ?? ""));
   revalidate();
 }
@@ -26,9 +27,14 @@ export async function grantAdminAction(formData: FormData): Promise<void> {
 /**
  * Lägenhetens konto blir ett vanligt lägenhetskonto igen. Ett personligt
  * admin-konto tas bort ur föreningen.
+ *
+ * Ingen tar bort sin egen admin-rätt – annars kunde styrelsen av misstag bli
+ * utan admins. Det gör en annan admin, eller JnM.
  */
 export async function revokeAdminAction(formData: FormData): Promise<void> {
-  await requireSupport();
-  await revokeAdmin(String(formData.get("memberId") ?? ""));
+  const user = await requireAdmin();
+  const memberId = String(formData.get("memberId") ?? "");
+  if (memberId === user.id) return;
+  await revokeAdmin(memberId);
   revalidate();
 }

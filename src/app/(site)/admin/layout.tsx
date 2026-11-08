@@ -5,25 +5,24 @@ import { formatDateTime } from "@/lib/utils";
 import { endSupportAction } from "./support/actions";
 
 /**
- * Menyn. Hus, lägenheter, koder och styrelsens konton sköts av plattformsägaren
- * (JnM) i ett supportläge – styrelsen ser varken flikarna eller sidorna, som
- * själva kräver requireSupport().
+ * Menyn. Hus, lägenheter och koderna sköts av plattformsägaren (JnM) i ett
+ * supportläge – styrelsen ser varken fliken eller sidorna, som själva kräver
+ * requireSupport(). Konton, där lägenheternas konton får admin-rätt, ser både
+ * styrelsen och JnM.
  */
 function adminNav(support: boolean): SubNavItem[] {
   return [
     { href: "/admin", label: "Översikt" },
     { href: "/admin/nyheter", label: "Nyheter" },
     { href: "/admin/dokument", label: "Dokument" },
-    support
-      ? {
-          href: "/admin/styrelse",
-          label: "Styrelse",
-          children: [
-            { href: "/admin/styrelse", label: "Styrelse och grupper" },
-            { href: "/admin/medlemmar", label: "Konton" },
-          ],
-        }
-      : { href: "/admin/styrelse", label: "Styrelse" },
+    {
+      href: "/admin/styrelse",
+      label: "Styrelse",
+      children: [
+        { href: "/admin/styrelse", label: "Styrelse och grupper" },
+        { href: "/admin/medlemmar", label: "Konton" },
+      ],
+    },
     {
       href: "/admin/foreningsinfo",
       label: "Föreningsinfo",

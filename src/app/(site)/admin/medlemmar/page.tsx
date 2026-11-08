@@ -1,6 +1,6 @@
 import Form from "next/form";
 import Link from "next/link";
-import { requireSupport } from "@/lib/auth";
+import { getSupportSession, requireAdmin } from "@/lib/auth";
 import {
   getAdminAccounts,
   getAssociationProfile,
@@ -34,13 +34,17 @@ const REMOVE_CLASSES =
   "text-sm font-medium text-red-600 hover:underline disabled:opacity-60";
 
 /**
- * Konton – bara i supportläget. Överst styrelsens admins. Under dem en sökning
- * på lägenhetsnummer i alla hus: där får en lägenhet en ny kod, och lägenhetens
- * konto admin-rätt när någon där sitter i styrelsen. En lista med alla
+ * Konton – för styrelsens admins och för JnM i supportläget. Överst styrelsens
+ * admins. Under dem en sökning på lägenhetsnummer i alla hus, där lägenhetens
+ * konto får admin-rätt när någon där sitter i styrelsen. En lista med alla
  * lägenheter skulle bli för lång att välja i.
+ *
+ * Koderna och lägenhetsregistret sköts bara av JnM: i supportläget har varje
+ * träff också Skapa kod / Ny kod och en länk till lägenhetens sida.
  */
 export default async function AccountsPage({ searchParams }: Props) {
-  await requireSupport();
+  const user = await requireAdmin();
+  const support = Boolean(await getSupportSession());
   const raw = (await searchParams).lgh;
   const query = (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
 
@@ -58,7 +62,11 @@ export default async function AccountsPage({ searchParams }: Props) {
     <div className="space-y-10">
       <PageHeader
         title="Konton"
-        description="Styrelsens admins och lägenheternas koder. En ledamot använder sin lägenhets konto, som får admin-rätt här. Bara du ser sidan, i supportläget."
+        description={
+          support
+            ? "Styrelsens admins och lägenheternas koder. En ledamot använder sin lägenhets konto, som får admin-rätt här."
+            : "Styrelsens admins. En ledamot använder sin lägenhets konto, som får admin-rätt här. Koder och nya brev sköts av JnM."
+        }
       />
 
       <section className="space-y-3">
@@ -71,7 +79,7 @@ export default async function AccountsPage({ searchParams }: Props) {
             description="Sök fram ledamotens lägenhet nedan och ge lägenhetens konto admin-rätt."
           />
         ) : (
-          <AdminTable admins={admins} />
+          <AdminTable admins={admins} currentUserId={user.id} />
         )}
       </section>
 
@@ -79,9 +87,10 @@ export default async function AccountsPage({ searchParams }: Props) {
         <div>
           <h2 className="text-lg font-semibold">Sök lägenhet</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Ge en lägenhet en ny kod, eller ge lägenhetens konto admin-rätt när
-            någon där sitter i styrelsen. Sökningen gäller alla hus och tar
-            också Lantmäteriets nummer.
+            {support
+              ? "Ge en lägenhet en ny kod, eller ge lägenhetens konto admin-rätt när någon där sitter i styrelsen."
+              : "Ge lägenhetens konto admin-rätt när någon där sitter i styrelsen."}{" "}
+            Sökningen gäller alla hus och tar också Lantmäteriets nummer.
           </p>
         </div>
 
@@ -101,13 +110,22 @@ export default async function AccountsPage({ searchParams }: Props) {
         {!query ? null : hits.length === 0 ? (
           <EmptyState
             title={`Ingen lägenhet ${query}`}
-            description="Kontrollera numret. Lägenheter läggs upp under Hus och lägenheter."
+            description={
+              support
+                ? "Kontrollera numret. Lägenheter läggs upp under Hus och lägenheter."
+                : "Kontrollera numret. Lägenheterna läggs upp av JnM."
+            }
           />
         ) : (
           <ul className="space-y-4">
             {hits.map((hit) => (
               <li key={hit.id}>
-                <HitCard hit={hit} sender={sender} />
+                <HitCard
+                  hit={hit}
+                  sender={sender}
+                  support={support}
+                  currentUserId={user.id}
+                />
               </li>
             ))}
           </ul>
@@ -117,7 +135,13 @@ export default async function AccountsPage({ searchParams }: Props) {
   );
 }
 
-function AdminTable({ admins }: { admins: AdminAccount[] }) {
+function AdminTable({
+  admins,
+  currentUserId,
+}: {
+  admins: AdminAccount[];
+  currentUserId: string;
+}) {
   return (
     <div className="overflow-x-auto rounded-card border border-border bg-surface">
       <table className="w-full min-w-[640px] text-sm">
@@ -153,18 +177,23 @@ function AdminTable({ admins }: { admins: AdminAccount[] }) {
                 )}
               </td>
               <td className="px-4 py-3 text-right">
-                <ConfirmSubmit
-                  action={revokeAdminAction}
-                  fields={{ memberId: admin.memberId }}
-                  question={
-                    admin.kind === "apartment"
-                      ? `Vill du ta bort admin-rätten för ${admin.name}?\n\nKontot finns kvar som lägenhetens vanliga konto.`
-                      : `Vill du ta bort admin-kontot för ${admin.name}?\n\nKontot tas bort ur föreningen och kommer inte längre åt adminpanelen.`
-                  }
-                  className={REMOVE_CLASSES}
-                >
-                  {admin.kind === "apartment" ? "Ta bort admin-rätten" : "Ta bort"}
-                </ConfirmSubmit>
+                {admin.memberId === currentUserId ? (
+                  // Ingen tar bort sin egen admin-rätt – se revokeAdminAction.
+                  <span className="text-sm text-muted">Ditt konto</span>
+                ) : (
+                  <ConfirmSubmit
+                    action={revokeAdminAction}
+                    fields={{ memberId: admin.memberId }}
+                    question={
+                      admin.kind === "apartment"
+                        ? `Vill du ta bort admin-rätten för ${admin.name}?\n\nKontot finns kvar som lägenhetens vanliga konto.`
+                        : `Vill du ta bort admin-kontot för ${admin.name}?\n\nKontot tas bort ur föreningen och kommer inte längre åt adminpanelen.`
+                    }
+                    className={REMOVE_CLASSES}
+                  >
+                    {admin.kind === "apartment" ? "Ta bort admin-rätten" : "Ta bort"}
+                  </ConfirmSubmit>
+                )}
               </td>
             </tr>
           ))}
@@ -174,10 +203,12 @@ function AdminTable({ admins }: { admins: AdminAccount[] }) {
   );
 }
 
-function stateText(hit: ApartmentHit): string {
+function stateText(hit: ApartmentHit, support: boolean): string {
   switch (hit.state) {
     case "ingen-kod":
-      return "Ingen kod ännu. Kontot skapas när koden används.";
+      return support
+        ? "Ingen kod ännu. Kontot skapas när koden används."
+        : "Ingen kod ännu. JnM skapar koden, och kontot skapas när den används.";
     case "kod-skapad":
       return `Kod skapad ${formatDate(hit.codeCreatedAt!)}. Ingen har använt den ännu – kontot kan bli admin först när det finns.`;
     case "aktiverat":
@@ -185,15 +216,28 @@ function stateText(hit: ApartmentHit): string {
     case "admin":
       return `Kontot aktiverades ${formatDate(hit.activatedAt!)} och har admin-rätt.`;
     case "personligt":
-      return "Ett gammalt personligt konto från tiden med registrering. Det kan inte bli admin – lägenheten behöver använda en kod först.";
+      return support
+        ? "Ett gammalt personligt konto från tiden med registrering. Det kan inte bli admin – lägenheten behöver använda en kod först."
+        : "Ett gammalt personligt konto från tiden med registrering. Det kan inte bli admin – lägenheten behöver en kod från JnM först.";
   }
 }
 
-/** En träff: lägenheten, kontots läge, admin-rätten och koden. */
-function HitCard({ hit, sender }: { hit: ApartmentHit; sender: LetterSender }) {
+/** En träff: lägenheten, kontots läge och admin-rätten – i supportläget även koden. */
+function HitCard({
+  hit,
+  sender,
+  support,
+  currentUserId,
+}: {
+  hit: ApartmentHit;
+  sender: LetterSender;
+  support: boolean;
+  currentUserId: string;
+}) {
   const where =
     [hit.buildingName, hit.buildingAddress].filter(Boolean).join(", ") ||
     "Inte placerad i något hus";
+  const ownAccount = hit.memberId !== null && hit.memberId === currentUserId;
 
   return (
     <Card>
@@ -210,16 +254,18 @@ function HitCard({ hit, sender }: { hit: ApartmentHit; sender: LetterSender }) {
             </p>
             <p className="text-sm text-muted">{where}</p>
           </div>
-          <Link
-            href={`/admin/lagenheter/${hit.id}`}
-            className="text-sm font-medium text-brand-700 hover:underline"
-          >
-            Öppna lägenheten →
-          </Link>
+          {support ? (
+            <Link
+              href={`/admin/lagenheter/${hit.id}`}
+              className="text-sm font-medium text-brand-700 hover:underline"
+            >
+              Öppna lägenheten →
+            </Link>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-xl text-sm">{stateText(hit)}</p>
+          <p className="max-w-xl text-sm">{stateText(hit, support)}</p>
           {hit.state === "aktiverat" ? (
             <ConfirmSubmit
               action={grantAdminAction}
@@ -229,7 +275,7 @@ function HitCard({ hit, sender }: { hit: ApartmentHit; sender: LetterSender }) {
             >
               Gör till admin
             </ConfirmSubmit>
-          ) : hit.state === "admin" && hit.memberId ? (
+          ) : hit.state === "admin" && hit.memberId && !ownAccount ? (
             <ConfirmSubmit
               action={revokeAdminAction}
               fields={{ memberId: hit.memberId }}
@@ -238,19 +284,23 @@ function HitCard({ hit, sender }: { hit: ApartmentHit; sender: LetterSender }) {
             >
               Ta bort admin-rätten
             </ConfirmSubmit>
+          ) : ownAccount ? (
+            <span className="text-sm text-muted">Ditt konto</span>
           ) : null}
         </div>
 
-        <div className="border-t border-border pt-4">
-          <CodeLettersButton
-            action={newCodeAction}
-            fields={{ apartmentId: hit.id }}
-            label={hit.hasCode ? "Ny kod" : "Skapa kod"}
-            pendingText="Skapar kod…"
-            variant="secondary"
-            sender={sender}
-          />
-        </div>
+        {support ? (
+          <div className="border-t border-border pt-4">
+            <CodeLettersButton
+              action={newCodeAction}
+              fields={{ apartmentId: hit.id }}
+              label={hit.hasCode ? "Ny kod" : "Skapa kod"}
+              pendingText="Skapar kod…"
+              variant="secondary"
+              sender={sender}
+            />
+          </div>
+        ) : null}
       </CardBody>
     </Card>
   );

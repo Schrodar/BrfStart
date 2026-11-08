@@ -81,7 +81,8 @@ export default async function AdminDashboard() {
             Härifrån hanterar styrelsen allt innehåll på sidan. Använd flikarna
             ovan för att redigera nyheter, dokument, styrelseuppgifter och
             föreningsfakta och för att hantera felanmälningar, annonser och
-            trapphustavlor. Lägenheternas konton och koder sköts av JnM.
+            trapphustavlor. Under Styrelse → Konton ger ni en ledamots
+            lägenhetskonto admin-rätt. Lägenheternas koder sköts av JnM.
           </p>
         </CardBody>
       </Card>
